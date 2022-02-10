@@ -316,10 +316,8 @@ get_baseline <- function (token) {
 
 #' Process Infant Care data
 #'
-#' This function will download and return parenting attention
-#' and infant reward subscales from the ICQ. NOTE:
-#' these measures were defined by DMW and are not validated subscales
-#' in the original survey.
+#' This function will download and return the
+#' Infant Care Questionnaire dataset
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
@@ -328,9 +326,9 @@ get_baseline <- function (token) {
 get_infant_care <- function(token, timepoint) {
   infant_care = get_data("infant_care_questionnaire")
   infant_care =  filter(infant_care, redcap_event_name == timepoint)
-  infant_care$parenting_attention = rowMeans(infant_care[, c("icq_3", "icq_6","icq_8","icq_9","icq_11","icq_13")], na.rm=T)
-  infant_care$infant_reward_response = rowMeans(infant_care[, c("icq_16","icq_19","icq_20")], na.rm=T)
-  infant_care = infant_care[,c("record_id", "parenting_attention", "infant_reward_response")]
+#  infant_care$parenting_attention = rowMeans(infant_care[, c("icq_3", "icq_6","icq_8","icq_9","icq_11","icq_13")], na.rm=T)
+#  infant_care$infant_reward_response = rowMeans(infant_care[, c("icq_16","icq_19","icq_20")], na.rm=T)
+#  infant_care = infant_care[,c("record_id", "parenting_attention", "infant_reward_response")]
   return (infant_care)
 }
 
