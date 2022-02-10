@@ -323,7 +323,7 @@ get_baseline <- function (token) {
 #' @param timepoint Survey timepoint branch requested
 #' @return A data frame for the completed surveys
 #' @export
-get_infant_care <- function(token, timepoint) {
+get_infant_care <- function(token, timepoint = "infant_6months_arm_1") {
   infant_care = get_data("infant_care_questionnaire")
   infant_care =  filter(infant_care, redcap_event_name == timepoint)
 #  infant_care$parenting_attention = rowMeans(infant_care[, c("icq_3", "icq_6","icq_8","icq_9","icq_11","icq_13")], na.rm=T)
