@@ -173,7 +173,7 @@ get_reward <- function(token, timepoint = "infant_3months_arm_1") {
   rew_start = which( colnames(reward)=="rrq_matrix_q01" )
   rew_end = rew_start+7
   reward$reward_avg = rowMeans(reward[,rew_start:rew_end],na.rm=T)
-  reward = reward[,c("record_id", "reward_avg")]
+  reward = reward[,c("record_id", "reward_sensitivity_avg")]
   return(reward)
 }
 
@@ -187,8 +187,9 @@ get_reward <- function(token, timepoint = "infant_3months_arm_1") {
 #' @param timepoint Survey timepoint branch requested
 #' @return A data frame for the completed surveys
 #' @export
-get_bitsea <- function(token) {
+get_bitsea <- function(token, timepoint = "infant_12months1_arm_1") {
   bitsea = get_data(token, "brief_infanttoddler_social_and_emotional_assessmen")
+  bitsea = dplyr::filter(bitsea, redcap_event_name == timepoint)
   bitsea$autism_competence  = rowSums(bitsea[,c("bitsea_1", "bitsea_10", "bitsea_13", "bitsea_15",
                                                 "bitsea_22", "bitsea_25", "bitsea_29", "bitsea_031")], na.rm=T)
   bitsea$autism_problems = rowSums(bitsea[,c("bitsea_9", "bitsea_14", "bitsea_21", "bitsea_35",
@@ -297,6 +298,12 @@ get_ibq <- function(token, timepoint = "infant_6months_arm_1") {
   ibq$ibq_sur = rowMeans(ibq[, c("ibqr_01","ibqr_02","ibqr_07","ibqr_08","ibqr_13","ibqr_14",
                                  "ibqr_15","ibqr_20","ibqr_21","ibqr_26","ibqr_27","ibqr_36", "ibqr_37")], na.rm=T)
   ibq = ibq[,c("record_id", "ibq_sur", "ibq_neg", "ibq_ec")]
+  if (timepoint == "infant_6months_arm_1") {
+    colnames(ibq) <- c("record_id", "ibq_6mos_sur", "ibq_6mos__neg", "ibq_6mos_ec")
+  }
+  if (timepoint == "infant_12months1_arm_1") {
+    colnames(ibq) <- c("record_id", "ibq_12mos_sur", "ibq_12mos__neg", "ibq_12mos_ec")
+  }
 }
 
 #' Process Baseline data
