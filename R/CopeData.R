@@ -42,6 +42,59 @@ get_data <- function(token = token, form = form, raw_v_label = 'raw') {
   return (df)
 }
 
+
+#' Find prenatal COVID+ moms
+#'
+#' This function will find infant record IDs of moms who self-reported having covid during pregnancy
+#'
+#' @param token Unique REDCap token ID
+#' @returns A data frame with record IDs of moms self-reporting as having covid during pregnancy
+#' @export
+get_prenatal_covid_records <- function(token) {
+  ## get record IDs from the Covid 19 Survey For Pregnant Women
+  preg_baseline = get_data(token, "covid19_survey_for_pregnant_women")
+  preg_baseline = preg_baseline[,c("record_id")]
+  
+  ## pull the Covid 19 Survey All survey
+  baseline = get_data(token, form = "covid_19_survey_all", "raw")
+  
+  ## keep subjects who reported having a positive covid test or prior/current symptoms
+  baseline = baseline %>% filter(self_test==2 | self_symp == 2 | self_symp == 3)
+  baseline = baseline[, c("record_id", "self_test", "self_symp")]
+  
+  ## keep subjects who were pregnant at the time
+  baseline = merge(baseline, preg_baseline, by="record_id")
+  
+  ## pull the Covid Status survey
+  covid = get_data(token, form = "covid_status", "raw")
+  ## keep subjects who reported having COVID during pregnancy
+  covid = covid %>% filter(covid_preg_trimester>=1)
+  covid = covid[, c("record_id", "covid_preg_trimester")]
+  
+  ## pull the NCIPR survey
+  ncipr = get_data(token, "novel_coronavirus_covid_illness_patient_report_nci", "raw")
+  ## keep subjects who reported having COVID during pregnancy
+  ncipr = ncipr %>% filter(ncipr_pregnant_any==1)
+  ncipr = ncipr[, c("record_id", "ncipr_pregnant_any")]
+  
+  # merge all data sets with covid positive record IDs
+  covid_pos = merge(baseline, ncipr, by="record_id", all.x=T, all.y=T)
+  covid_pos = merge(covid_pos, covid, by="record_id", all.x=T, all.y=T)
+  
+  # delete duplicate record IDs
+  covid_pos = covid_pos[!duplicated(covid_pos), ]
+  
+  # get record IDs from moms who provided infant data
+  infant_data = get_data(token, "infant_demographics")
+  infant_data = infant_data[,c("record_id")]
+  
+  # cross reference covid positive moms with moms who also provided any infant data
+  covid_pos_infant_consent = merge(covid_pos, infant_data, by="record_id")
+  covid_pos_infant_consent = covid_pos_infant_consent[!duplicated(covid_pos_infant_consent$record_id), ]
+  return(covid_pos_infant_consent)
+}
+
+
 #' Process CHAOS data
 #'
 #' This function will download and compute total scores for the
@@ -50,21 +103,25 @@ get_data <- function(token = token, form = form, raw_v_label = 'raw') {
 #' @param token Unique REDCap token ID
 #' @return A data frame for the completed surveys
 #' @export
-get_chaos <- function(token) {
+get_chaos <- function(token, timepoint = "infant_9months_arm_1") {
   chaos = get_data(token, "confusion_hubbub_and_order_scale_chaos")
+  chaos = dplyr::filter(chaos, redcap_event_name == timepoint)
   chaos$chaos_late = abs(5 - chaos$chaos_late)
   chaos$chaos_zoo = abs(5 - chaos$chaos_zoo)
   chaos$chaos_fuss = abs(5 - chaos$chaos_fuss)
   chaos$chaos_plans = abs(5 - chaos$chaos_plans)
   chaos$chaos_think = abs(5 - chaos$chaos_think)
   chaos$chaos_arguement = abs(5 - chaos$chaos_arguement)
+  chaos$chaos_rushed = abs(5 - chaos$chaos_rushed)
 
   chaos$total_score =  rowMeans(chaos[,c("chaos_late", "chaos_commotion","chaos_rushed", "chaos_interrupt", "chaos_plans",
                                          "chaos_arguement", "chaos_routine","chaos_findthings", "chaos_ontop",
-                                         "chaos_zoo", "chaos_fuss", "chaos_think", "chaos_relax", "chaos_calm")], na.rm=T)
-  chaos = chaos[,c("record_id", "total_score")]
+                                         "chaos_zoo", "chaos_fuss", "chaos_think", "chaos_rushed", "chaos_relax", "chaos_calm")], na.rm=T)
+  chaos = chaos[,c("record_id", "redcap_event_name", "total_score")]
   return (chaos)
 }
+
+
 
 #' Process ASQ data
 #'
@@ -115,8 +172,18 @@ get_pss <- function(token, timepoint = "infant_6months_arm_1") {
 get_epds <- function(token, timepoint = "infant_6months_arm_1") {
   epds = get_data(token, "cope_epds")
   epds = dplyr::filter(epds, redcap_event_name == timepoint)
-  epds$epds_avg = rowSums(epds[,5:14], na.rm=T)
-  epds = epds[,c("record_id", "epds_avg")]
+  
+  epds$epds_1_v2 = 3 - epds$epds_1_v2
+  epds$epds_2_v2 = 3 - epds$epds_2_v2
+  epds$epds_all = epds$epds_1_v2 + epds$epds_2_v2 + epds$epds_3_v2 + epds$epds_4_v2 + epds$epds_5_v2 +
+    epds$epds_6_v2 + epds$epds_7_v2 + epds$epds_8_v2 + epds$epds_9_v2 + epds$epds_10_v2
+  
+  epds$epds_dep = epds$epds_1_v2 + epds$epds_2_v2 + epds$epds_3_v2 +
+    epds$epds_7_v2 + epds$epds_8_v2 + epds$epds_9_v2 + epds$epds_10_v2
+  
+  epds$epds_anx = epds$epds_4_v2 + epds$epds_5_v2 + epds$epds_6_v2
+  
+  epds = epds[,c("record_id", "epds_all", "epds_dep", "epds_anx")]
   return (epds)
 }
 
@@ -187,8 +254,9 @@ get_reward <- function(token, timepoint = "infant_3months_arm_1") {
 #' @param timepoint Survey timepoint branch requested
 #' @return A data frame for the completed surveys
 #' @export
-get_bitsea <- function(token) {
+get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
   bitsea = get_data(token, "brief_infanttoddler_social_and_emotional_assessmen")
+  bitsea = dplyr::filter(bitsea, redcap_event_name == timepoint)
   bitsea$autism_competence  = rowSums(bitsea[,c("bitsea_1", "bitsea_10", "bitsea_13", "bitsea_15",
                                                 "bitsea_22", "bitsea_25", "bitsea_29", "bitsea_031")], na.rm=T)
   bitsea$autism_problems = rowSums(bitsea[,c("bitsea_9", "bitsea_14", "bitsea_21", "bitsea_35",

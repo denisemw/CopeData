@@ -4,7 +4,7 @@
 \alias{get_bitsea}
 \title{Process 12 month BITSEA data}
 \usage{
-get_bitsea(token)
+get_bitsea(token, timepoint = "infant_12months2_arm_1")
 }
 \arguments{
 \item{token}{Unique REDCap token ID}

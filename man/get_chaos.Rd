@@ -4,7 +4,7 @@
 \alias{get_chaos}
 \title{Process CHAOS data}
 \usage{
-get_chaos(token)
+get_chaos(token, timepoint = "infant_9months_arm_1")
 }
 \arguments{
 \item{token}{Unique REDCap token ID}

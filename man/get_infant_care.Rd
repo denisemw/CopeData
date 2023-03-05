@@ -4,7 +4,7 @@
 \alias{get_infant_care}
 \title{Process Infant Care data}
 \usage{
-get_infant_care(token, timepoint)
+get_infant_care(token, timepoint = "infant_6months_arm_1")
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
@@ -15,8 +15,6 @@ get_infant_care(token, timepoint)
 A data frame for the completed surveys
 }
 \description{
-This function will download and return parenting attention
-and infant reward subscales from the ICQ. NOTE:
-these measures were defined by DMW and are not validated subscales
-in the original survey.
+This function will download and return the
+Infant Care Questionnaire dataset
 }
