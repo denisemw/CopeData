@@ -4,7 +4,7 @@
 \alias{get_data}
 \title{Load a Matrix}
 \usage{
-get_data(token = token, form = form, raw_v_label = "raw")
+get_data(token = token, form = form, raw_v_label = "raw", form_complete = T)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
@@ -12,6 +12,8 @@ get_data(token = token, form = form, raw_v_label = "raw")
 \item{form}{Name of the survey to be downloaded}
 
 \item{raw_v_label}{Whether raw data or labels are requested}
+
+\item{form_complete}{Whether complete or all surveys are downloaded (default is T)}
 }
 \value{
 A data frame for the completed surveys
