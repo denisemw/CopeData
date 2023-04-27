@@ -631,12 +631,15 @@ get_child_dob <- function(token) {
   pregnant_due_date <- get_field(token, field="pregnant_due_date")
   pregnant_due_date <- dplyr::distinct(pregnant_due_date, record_id, .keep_all=T)
   pregnant_due_date <- dplyr::select(pregnant_due_date, -redcap_event_name)
+  bio_edd <- get_field(token, field="bio_edd")
+  bio_edd <- dplyr::select(bio_edd, -redcap_event_name)
   dobs <- dplyr::full_join(bio_dob, mhx_babydob, by="record_id")
   dobs <- dplyr::full_join(dobs, child_birth_date, by="record_id")
   dobs <- dplyr::full_join(dobs, infant_visit_dob, by="record_id")
   dobs <- dplyr::full_join(dobs, welcome_30, by="record_id")
-  dobs <- dplyr::left_join(dobs, pregnant_due_date, by="record_id")
-  cols <- c("bio_dob","mhx_babydob_1", "mhx_babydob_2", "child_birth_date", "infant_visit_dob_1", "infant_visit_dob_2", "infant_visit_dob_3", "infant_visit_dob_4", "infant_visit_dob_5", "month30_dob_welcome", "pregnant_due_date")
+  dobs <- dplyr::full_join(dobs, pregnant_due_date, by="record_id")
+  dobs <- dplyr::full_join(dobs, bio_edd, by="record_id")
+  cols <- c("bio_dob","mhx_babydob_1", "mhx_babydob_2", "child_birth_date", "infant_visit_dob_1", "infant_visit_dob_2", "infant_visit_dob_3", "infant_visit_dob_4", "infant_visit_dob_5", "month30_dob_welcome", "pregnant_due_date", "bio_edd")
   dobs[cols] <- lapply(dobs[cols], as.Date, format = "%Y-%m-%d")
   dobs$bio_dob <- ifelse(dobs$bio_dob > Sys.Date() | dobs$bio_dob < "2018-01-01", NA_real_, dobs$bio_dob)
   dobs$mhx_babydob_1 <- ifelse(dobs$mhx_babydob_1 > Sys.Date() | dobs$mhx_babydob_1 < "2018-01-01", NA_real_, dobs$mhx_babydob_1)
@@ -649,6 +652,7 @@ get_child_dob <- function(token) {
   dobs$month30_dob_welcome <- ifelse(dobs$month30_dob_welcome >= Sys.Date() | dobs$month30_dob_welcome < "2018-01-01", NA_real_, dobs$month30_dob_welcome)
   dobs$child_birth_date <- ifelse(dobs$child_birth_date >= Sys.Date() | dobs$child_birth_date < "2018-01-01", NA_real_, dobs$child_birth_date)
   dobs$pregnant_due_date <- ifelse(dobs$pregnant_due_date < "2018-01-01", NA_real_, dobs$pregnant_due_date)
+  dobs$bio_edd <- ifelse(dobs$bio_edd < "2018-01-01", NA_real_, dobs$bio_edd)
   dobs[cols] <- lapply(dobs[cols], as.Date, origin="1970-01-01")
   for (i in 1:nrow(dobs)) {
     row_vec <- na.omit(as.numeric(dobs[i, 2:11]))
@@ -664,17 +668,14 @@ get_child_dob <- function(token) {
       if (length(row_vec) > 1) {
         dobs[i, "final_child_dob"] <- min(row_vec)
         message(paste("Discrepancy for ID ", dobs$record_id[i]), " - earliest date used, double check")
-      }else{
-        message(paste("No DOB for ID ", dobs$record_id[i]), " - double check")
       }
-
     }
   }
-  dobs <- dplyr::select(dobs, record_id, final_child_dob, pregnant_due_date)
-  dobs$pregnant_due_date <- ifelse(!is.na(dobs$final_child_dob), NA, dobs$pregnant_due_date)
-  dobs$pregnant_due_date <- as.Date(dobs$pregnant_due_date, origin = "1970-01-01")
+  dobs$due_date <- ifelse(!is.na(dobs$pregnant_due_date), dobs$pregnant_due_date, dobs$bio_edd)
+  dobs$due_date <- as.Date(dobs$due_date, origin="1970-01-01")
+  dobs <- dplyr::select(dobs, record_id, final_child_dob, due_date)
   dobs$child_current_age <- as.numeric(difftime(Sys.Date(), dobs$final_child_dob, units = "days"))
-  dobs$expected_child_age <- as.numeric(difftime(Sys.Date(), dobs$pregnant_due_date, units="days"))
+  dobs$expected_child_age <- as.numeric(difftime(Sys.Date(), dobs$due_date, units="days"))
   dobs <- dplyr::rename(dobs, child_dob_final = final_child_dob)
   return(dobs)
 }
