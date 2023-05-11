@@ -454,13 +454,13 @@ baseline_SES <- function (baseline) {
   baseline$income_binned = NA
   baseline$income_binned[baseline$income == 1] <- 1
   baseline$income_binned[baseline$income == 2  | baseline$income == 3] <- 2
-  baseline$income_binned[baseline$income == 16 | baseline$income == 6] <- 3
-  baseline$income_binned[baseline$income == 7 | baseline$income == 8] <- 4
-  baseline$income_binned[baseline$income == 9 | baseline$income == 10] <- 5
-  baseline$income_binned[baseline$income == 11 | baseline$income == 12] <- 6
-  baseline$income_binned[baseline$income == 13 | baseline$income == 14] <- 7
-  baseline$income_binned[baseline$income == 15 | baseline$income == 16] <- 8
-  baseline$income_binned[baseline$income == 4] <- 9
+  baseline$income_binned[baseline$income == 16 | baseline$income == 4] <- 3
+  baseline$income_binned[baseline$income == 5 | baseline$income == 6] <- 4
+  baseline$income_binned[baseline$income == 7 | baseline$income == 8] <- 5
+  baseline$income_binned[baseline$income == 9 | baseline$income == 10] <- 6
+  baseline$income_binned[baseline$income == 11 | baseline$income == 12] <- 7
+  baseline$income_binned[baseline$income == 13 | baseline$income == 14] <- 8
+  baseline$income_binned[baseline$income == 15] <- 9
 
   baseline$education_binned = NA
   baseline$education_binned[baseline$education < 3] <- 1
