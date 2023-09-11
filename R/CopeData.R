@@ -557,7 +557,7 @@ get_all_timepoints<- function(token) {
                                values_from = 'infant_visit_date', id_cols = 'record_id')
   names(visits)[-1] <- gsub("_arm_1", "", names(visits)[-1])
   visits <- dplyr::rename(visits, infant_12months = infant_12months2)
-  visits <- dplyr::select(visits, record_id, infant_6months, infant_9months, infant_12months, infant_18months, infant_30months)
+  visits <- dplyr::select(visits, record_id, infant_6months, infant_9months, infant_12months, infant_18months, infant_30months, child_42months)
   return(visits)
 }
 
