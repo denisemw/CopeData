@@ -695,23 +695,35 @@ get_mom_dob <- function(token) {
   mom_demo_momdob$redcap_event_name <- gsub("infant_visits_arm_1", "1", mom_demo_momdob$redcap_event_name)
   mom_demo_momdob$redcap_event_name <- gsub("infant_30months_arm_1", "2", mom_demo_momdob$redcap_event_name)
   mom_demo_momdob <- tidyr::pivot_wider(mom_demo_momdob, id_cols = record_id, names_from = redcap_event_name, values_from = mom_demo_momdob, names_prefix = "mom_demo_momdob_")
+  re_mom_dob <- get_field(token, field="re_mom_dob")
+  re_mom_dob <- dplyr::select(re_mom_dob, -redcap_event_name)
+  
+  #merging into one data frame
   mom_dob <- dplyr::full_join(birth_date, mom_demo_momdob, by="record_id")
-  cols <- c("birth_date", "mom_demo_momdob_1", "mom_demo_momdob_2")
+  mom_dob <- dplyr::full_join(mom_dob, re_mom_dob, by="record_id")
+  cols <- c("birth_date", "mom_demo_momdob_1", "mom_demo_momdob_2", "re_mom_dob")
   mom_dob[cols] <- lapply(mom_dob[cols], as.Date, format = "%Y-%m-%d")
+  
+  #removing values that are incorrect
   mom_dob$birth_date <- ifelse(mom_dob$birth_date > "2010-01-01" | mom_dob$birth_date < "1950-01-01", NA_real_, mom_dob$birth_date)
   mom_dob$mom_demo_momdob_1 <- ifelse(mom_dob$mom_demo_momdob_1 > "2010-01-01" | mom_dob$mom_demo_momdob_1 < "1950-01-01", NA_real_, mom_dob$mom_demo_momdob_1)
   mom_dob$mom_demo_momdob_2 <- ifelse(mom_dob$mom_demo_momdob_2 > "2010-01-01" | mom_dob$mom_demo_momdob_2 < "1950-01-01", NA_real_, mom_dob$mom_demo_momdob_2)
+  mom_dob$re_mom_dob <- ifelse(mom_dob$re_mom_dob > "2010-01-01" | mom_dob$re_mom_dob < "1950-01-01", NA_real_, mom_dob$re_mom_dob)
   mom_dob[cols] <- lapply(mom_dob[cols], as.Date, origin="1970-01-01")
+  
+  #making final dob column for rows where there are no discrepancies
   for (i in 1:nrow(mom_dob)) {
-    row_vec <- na.omit(as.numeric(mom_dob[i, 2:4]))
+    row_vec <- na.omit(as.numeric(mom_dob[i, 2:5]))
     row_vec <- as.Date(row_vec, origin="1970-01-01")
     if (length(row_vec) > 1) {row_vec <- row_vec[duplicated(row_vec)]}
     mom_dob[i, "mom_dob_final"] <- row_vec[1]
   }
+  
+  #selecting dob when there is a discrepeancy
   for (i in 1:nrow(mom_dob)) {
     if (is.na(mom_dob$mom_dob_final[i])) {
-      row_vec <- na.omit(as.numeric(mom_dob[i, 2:4]))
-      col_names <- names(mom_dob[, 2:4])[!is.na(mom_dob[i, 2:4])]
+      row_vec <- na.omit(as.numeric(mom_dob[i, 2:5]))
+      col_names <- names(mom_dob[, 2:5])[!is.na(mom_dob[i, 2:5])]
       row_vec <- as.Date(row_vec, origin="1970-01-01")
       if (length(row_vec) > 1) {
         mom_dob[i, "mom_dob_final"] <- min(row_vec)
@@ -719,6 +731,8 @@ get_mom_dob <- function(token) {
       }
     }
   }
+  
+  #creating final dataset
   mom_dob <- dplyr::select(mom_dob, record_id, mom_dob_final)
   mom_dob$mom_current_age <- as.numeric(difftime(Sys.Date(), mom_dob$mom_dob_final, units="days")/365.25)
   return(mom_dob)
