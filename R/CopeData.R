@@ -598,22 +598,29 @@ get_survey_data <- function(token, form=form, event=event) {
 #' @return data frame of record id and most recent/accurate child_dob variable & IDs to check manually
 #' @export
 get_child_dob <- function(token) {
+  #child dob variable 1: mhx_babydob (3)
   mhx_babydob <- get_field(token, field="mhx_babydob")
   mhx_babydob$redcap_event_name <- gsub("infant_visits_arm_1", "1", mhx_babydob$redcap_event_name)
   mhx_babydob$redcap_event_name <- gsub("infant_30months_arm_1", "2", mhx_babydob$redcap_event_name)
+  mhx_babydob$redcap_event_name <- gsub("child_42months_arm_1", "3", mhx_babydob$redcap_event_name)
   mhx_babydob <- tidyr::pivot_wider(mhx_babydob, id_cols = record_id, names_from = redcap_event_name, values_from = mhx_babydob, names_prefix = "mhx_babydob_")
+  #child dob variable 2: welcome_30 (1)
   welcome_30 <- get_field(token, field="month30_dob_welcome")
   welcome_30 <- dplyr::select(welcome_30, record_id, month30_dob_welcome)
+  #child dob variable 3: infant_visit_dob (6)
   infant_visit_dob <- get_field(token, field="infant_visit_dob")
   infant_visit_dob$redcap_event_name <- gsub("infant_6months_arm_1", "1", infant_visit_dob$redcap_event_name)
   infant_visit_dob$redcap_event_name <- gsub("infant_9months_arm_1", "2", infant_visit_dob$redcap_event_name)
   infant_visit_dob$redcap_event_name <- gsub("infant_12months2_arm_1", "3", infant_visit_dob$redcap_event_name)
   infant_visit_dob$redcap_event_name <- gsub("infant_18months_arm_1", "4", infant_visit_dob$redcap_event_name)
   infant_visit_dob$redcap_event_name <- gsub("infant_30months_arm_1", "5", infant_visit_dob$redcap_event_name)
+  infant_visit_dob$redcap_event_name <- gsub("child_42months_arm_1", "6", infant_visit_dob$redcap_event_name)
   infant_visit_dob <- tidyr::pivot_wider(infant_visit_dob, id_cols = record_id, names_from = redcap_event_name, values_from = infant_visit_dob, names_prefix = "infant_visit_dob_")
-  infant_visit_dob <- dplyr::select(infant_visit_dob,record_id, infant_visit_dob_1, infant_visit_dob_2, infant_visit_dob_3, infant_visit_dob_4, infant_visit_dob_5)
+  infant_visit_dob <- dplyr::select(infant_visit_dob,record_id, infant_visit_dob_1, infant_visit_dob_2, infant_visit_dob_3, infant_visit_dob_4, infant_visit_dob_5, infant_visit_dob_6)
+  #child dob variable 4: bio_dob (1)
   bio_dob <- get_field(token, field="bio_dob")
   bio_dob <- dplyr::select(bio_dob, -redcap_event_name)
+  #child dob variable 5: child_birth_date2
   child_birth_date <- get_field(token, field = "child_birth_date2")
   child_birth_date$redcap_event_name <- gsub("covid_week_2_follo_arm_1", "1", child_birth_date$redcap_event_name)
   child_birth_date$redcap_event_name <- gsub("covid_week_4_follo_arm_1", "2", child_birth_date$redcap_event_name)
@@ -621,49 +628,64 @@ get_child_dob <- function(token) {
   child_birth_date$redcap_event_name <- gsub("covid_week_8_follo_arm_1", "4", child_birth_date$redcap_event_name)
   child_birth_date$redcap_event_name <- gsub("covid_week_10_foll_arm_1", "5", child_birth_date$redcap_event_name)
   child_birth_date <- tidyr::pivot_wider(child_birth_date, id_cols = record_id, names_from = redcap_event_name, values_from = child_birth_date2, names_prefix = "child_birth_date_")
+  #child dob variable 6: child_birth_date
+  child_birth_date2 <- get_field(token, field = "child_birth_date")
+  child_birth_date2$redcap_event_name <- gsub("baseline_2021_arm_1", "1", child_birth_date2$redcap_event_name)
+  child_birth_date2$redcap_event_name <- gsub("covid_arm_1", "2", child_birth_date2$redcap_event_name)
+  child_birth_date2 <- tidyr::pivot_wider(child_birth_date2, id_cols = record_id, names_from = redcap_event_name, values_from = child_birth_date, names_prefix = "child_birth_date2_")
+  #child dob variable 7: re_child_dob (1)
+  re_child_dob <- get_field(token, field="re_child_dob")
+  re_child_dob <- dplyr::select(re_child_dob, -redcap_event_name)
+  
+  #cleaning child birth date responses
+  child_birth_date <- dplyr::full_join(child_birth_date, child_birth_date2, by="record_id")
+  cols <- colnames(child_birth_date[2:7])
+  child_birth_date[cols] <- lapply(child_birth_date[cols], function(col) {
+    ifelse(col > Sys.Date() | col < "2019-01-01", NA_real_, col)
+  })
+  child_birth_date[cols] <- lapply(child_birth_date[cols], as.Date, origin="1970-01-01")
   for (i in 1:nrow(child_birth_date)) {
-    row_vec <- na.omit(as.numeric(child_birth_date[i, 2:6]))
+    row_vec <- na.omit(as.numeric(child_birth_date[i, 2:7]))
     row_vec <- as.Date(row_vec, origin="1970-01-01")
+    
     if (length(row_vec) > 1) {row_vec <- row_vec[duplicated(row_vec)]}
     child_birth_date[i, "child_birth_date"] <- row_vec[1]
   }
   child_birth_date <- dplyr::select(child_birth_date, record_id, child_birth_date)
+  
+  #due date variables 
   pregnant_due_date <- get_field(token, field="pregnant_due_date")
   pregnant_due_date <- dplyr::distinct(pregnant_due_date, record_id, .keep_all=T)
   pregnant_due_date <- dplyr::select(pregnant_due_date, -redcap_event_name)
   bio_edd <- get_field(token, field="bio_edd")
   bio_edd <- dplyr::select(bio_edd, -redcap_event_name)
-  dobs <- dplyr::full_join(bio_dob, mhx_babydob, by="record_id")
-  dobs <- dplyr::full_join(dobs, child_birth_date, by="record_id")
+  
+  #creating dob variable
+  dobs <- dplyr::full_join(mhx_babydob, welcome_30, by="record_id")
   dobs <- dplyr::full_join(dobs, infant_visit_dob, by="record_id")
-  dobs <- dplyr::full_join(dobs, welcome_30, by="record_id")
+  dobs <- dplyr::full_join(dobs, bio_dob, by="record_id")
+  dobs <- dplyr::full_join(dobs, child_birth_date, by="record_id")
+  dobs <- dplyr::full_join(dobs, re_child_dob, by="record_id")
   dobs <- dplyr::full_join(dobs, pregnant_due_date, by="record_id")
   dobs <- dplyr::full_join(dobs, bio_edd, by="record_id")
-  cols <- c("bio_dob","mhx_babydob_1", "mhx_babydob_2", "child_birth_date", "infant_visit_dob_1", "infant_visit_dob_2", "infant_visit_dob_3", "infant_visit_dob_4", "infant_visit_dob_5", "month30_dob_welcome", "pregnant_due_date", "bio_edd")
+  cols <- colnames(dobs[2:16])
   dobs[cols] <- lapply(dobs[cols], as.Date, format = "%Y-%m-%d")
-  dobs$bio_dob <- ifelse(dobs$bio_dob > Sys.Date() | dobs$bio_dob < "2018-01-01", NA_real_, dobs$bio_dob)
-  dobs$mhx_babydob_1 <- ifelse(dobs$mhx_babydob_1 > Sys.Date() | dobs$mhx_babydob_1 < "2018-01-01", NA_real_, dobs$mhx_babydob_1)
-  dobs$mhx_babydob_2 <- ifelse(dobs$mhx_babydob_2 > Sys.Date() | dobs$mhx_babydob_2 < "2018-01-01", NA_real_, dobs$mhx_babydob_2)
-  dobs$infant_visit_dob_1 <- ifelse(dobs$infant_visit_dob_1 >= Sys.Date() | dobs$infant_visit_dob_1 < "2018-01-01", NA_real_, dobs$infant_visit_dob_1)
-  dobs$infant_visit_dob_2 <- ifelse(dobs$infant_visit_dob_2 >= Sys.Date() | dobs$infant_visit_dob_2 < "2018-01-01", NA_real_, dobs$infant_visit_dob_2)
-  dobs$infant_visit_dob_3 <- ifelse(dobs$infant_visit_dob_3 >= Sys.Date() | dobs$infant_visit_dob_3 < "2018-01-01", NA_real_, dobs$infant_visit_dob_3)
-  dobs$infant_visit_dob_4 <- ifelse(dobs$infant_visit_dob_4 >= Sys.Date() | dobs$infant_visit_dob_4 < "2018-01-01", NA_real_, dobs$infant_visit_dob_4)
-  dobs$infant_visit_dob_5 <- ifelse(dobs$infant_visit_dob_5 >= Sys.Date() | dobs$infant_visit_dob_5 < "2018-01-01", NA_real_, dobs$infant_visit_dob_5)
-  dobs$month30_dob_welcome <- ifelse(dobs$month30_dob_welcome >= Sys.Date() | dobs$month30_dob_welcome < "2018-01-01", NA_real_, dobs$month30_dob_welcome)
-  dobs$child_birth_date <- ifelse(dobs$child_birth_date >= Sys.Date() | dobs$child_birth_date < "2018-01-01", NA_real_, dobs$child_birth_date)
-  dobs$pregnant_due_date <- ifelse(dobs$pregnant_due_date < "2018-01-01", NA_real_, dobs$pregnant_due_date)
-  dobs$bio_edd <- ifelse(dobs$bio_edd < "2018-01-01", NA_real_, dobs$bio_edd)
+  dobs[cols] <- lapply(dobs[cols], function(col) {
+    ifelse(col > Sys.Date() | col < "2019-01-01", NA_real_, col)
+  })
   dobs[cols] <- lapply(dobs[cols], as.Date, origin="1970-01-01")
+  
   for (i in 1:nrow(dobs)) {
-    row_vec <- na.omit(as.numeric(dobs[i, 2:11]))
+    row_vec <- na.omit(as.numeric(dobs[i, 2:14]))
     row_vec <- as.Date(row_vec, origin="1970-01-01")
     if (length(row_vec) > 1) {row_vec <- row_vec[duplicated(row_vec)]}
     dobs[i, "final_child_dob"] <- row_vec[1]
   }
+  
   for (i in 1:nrow(dobs)) {
     if (is.na(dobs$final_child_dob[i])) {
-      row_vec <- na.omit(as.numeric(dobs[i, 2:11]))
-      col_names <- names(dobs[, 2:11])[!is.na(dobs[i, 2:11])]
+      row_vec <- na.omit(as.numeric(dobs[i, 2:14]))
+      col_names <- names(dobs[, 2:14])[!is.na(dobs[i, 2:14])]
       row_vec <- as.Date(row_vec, origin="1970-01-01")
       if (length(row_vec) > 1) {
         dobs[i, "final_child_dob"] <- min(row_vec)
@@ -671,9 +693,12 @@ get_child_dob <- function(token) {
       }
     }
   }
+  
   dobs$due_date <- ifelse(!is.na(dobs$pregnant_due_date), dobs$pregnant_due_date, dobs$bio_edd)
   dobs$due_date <- as.Date(dobs$due_date, origin="1970-01-01")
+  
   dobs <- dplyr::select(dobs, record_id, final_child_dob, due_date)
+  
   dobs$child_current_age <- as.numeric(difftime(Sys.Date(), dobs$final_child_dob, units = "days"))
   dobs$expected_child_age <- as.numeric(difftime(Sys.Date(), dobs$due_date, units="days"))
   dobs <- dplyr::rename(dobs, child_dob_final = final_child_dob)
