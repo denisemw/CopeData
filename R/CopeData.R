@@ -764,3 +764,85 @@ get_mom_dob <- function(token) {
 }
 
 
+#' Generates Expected Invite Data
+#'
+#' Lists all expected invite dates/months for specified timepoints and time frames
+#' 
+#' @param token Unique REDCap token ID
+#' @param timepoint The COPE timepoint in numeric format (6, 9, 12, 18, 30, 42)
+#' @param max_date The max date you wish to pull data for (e.g. '2024-06-01'), default is all future invites
+#' @return A list with 1) data frame of all ids, invite date, month, longitudinal status, 2) stacked bar chart of counts by month, 3) data frame of counts by month
+#' @export
+get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none') {
+  library(dplyr)
+  
+  #creating data frame 
+  age_in = case_when(
+    timepoint == 6 ~ 142, timepoint == 9 ~ 243, timepoint == 12 ~ 336, timepoint == 18 ~ 504, timepoint == 30 ~ 870, timepoint == 42 ~ 1232
+  )
+  
+  all_dobs <- get_child_dob(token)
+  
+  longitudinal_participants <- get_all_timepoints(token)
+  longitudinal_participants <- longitudinal_participants %>%
+    select(record_id) %>%
+    mutate(longitudinal = 'Longitudinal') 
+  
+  all_dobs <- all_dobs %>%
+    mutate(dob = ifelse(!is.na(child_dob_final) & !is.na(due_date), child_dob_final,
+                        ifelse(is.na(child_dob_final) & !is.na(due_date), due_date, child_dob_final))) %>%
+    select(record_id, dob) %>%
+    mutate(expected_invite_date = as.Date((dob + age_in), origin='1970-01-01'),
+           dob = as.Date(dob, origin='1970-01-01'),
+           invite_month = format(expected_invite_date, "%b %y")) %>%
+    arrange(expected_invite_date) %>%
+    filter(expected_invite_date >= Sys.Date()) %>%
+    left_join(longitudinal_participants, by='record_id') 
+  
+  all_dobs$longitudinal <- ifelse(is.na(all_dobs$longitudinal), 'Not Longitudinal', all_dobs$longitudinal)
+  
+  if (max_date != 'none') {
+    all_dobs <- all_dobs %>%
+      filter(expected_invite_date <= max_date)
+  }
+  
+  #bar chart 
+  all_dobs$invite_month <- factor(all_dobs$invite_month, levels = unique(all_dobs$invite_month))
+  colors = c('#dabfff', '#907ad6')
+  title = paste0("Future invites by month for ", timepoint, " month timepoint")
+  
+  plot <- ggplot(all_dobs, aes(x = invite_month, fill = factor(longitudinal))) +
+    geom_bar(position = "stack", width = 0.8) +
+    labs(title = title,
+         x = "Month-Year",
+         y = "Number of Invites",
+         fill = "Longitudinal") + 
+    theme(panel.background = element_rect(fill="white"),
+          panel.border=element_rect(color="#3C1939", fill=NA, linewidth=1),
+          legend.title = element_blank(), 
+          axis.text = element_text(family = 'Arial', size = 10),
+          axis.title = element_text(family='Arial', size=12),
+          legend.text = element_text(family='Arial', size=11),
+          title = element_text(family="Arial", size=14)) +
+    scale_fill_manual(values = colors)
+  plot
+  
+  #creating data frame with counts per month 
+  counts <- data.frame(table(all_dobs$invite_month)) %>%
+    rename(total = Freq)
+  
+  long_counts <- data.frame(table(subset(all_dobs, longitudinal == 'Longitudinal')$invite_month)) %>%
+    rename(longitudinal = Freq)
+  non_long_counts <-  data.frame(table(subset(all_dobs, longitudinal == 'Not Longitudinal')$invite_month)) %>%
+    rename(non_longitudinal = Freq)
+  
+  counts <- counts %>%
+    left_join(long_counts, by='Var1') %>%
+    left_join(non_long_counts, by='Var1') %>%
+    rename(month = Var1)
+  
+  #compiling and saving list
+  result <- list(data = all_dobs, plot = plot, counts = counts)
+  
+  return(result)
+}
