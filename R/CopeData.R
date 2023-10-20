@@ -785,6 +785,7 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
   
   longitudinal_participants <- get_all_timepoints(token)
   longitudinal_participants <- longitudinal_participants %>%
+    filter(!is.na(infant_6months) | !is.na(infant_12months) | !is.na(infant_30months) | is.na(child_42months)) %>%
     select(record_id) %>%
     mutate(longitudinal = 'Longitudinal') 
   
