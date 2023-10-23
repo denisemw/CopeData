@@ -44,6 +44,9 @@ get_data <- function(token = token, form = form, raw_v_label = 'raw', form_compl
   df[df == -999] = NA
   df[df == 999] = NA
   df[df == 9999] = NA
+  df[df == 9999999] = NA
+  df[df == 999999] = NA
+  df[df == 99999] = NA
   return (df)
 }
 
@@ -808,8 +811,14 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
   }
   
   #bar chart 
+  
+  
   all_dobs$invite_month <- factor(all_dobs$invite_month, levels = unique(all_dobs$invite_month))
-  colors = c('#dabfff', '#907ad6')
+  
+  colors <- ifelse("Longitudinal" %in% all_dobs$longitudinal & "Not Longitudinal" %in% all_dobs$longitudinal, 
+                   c('#dabfff', '#907ad6'),
+                   ifelse("Longitudinal" %in% all_dobs$longitudinal, '#dabfff', '#907ad6'))
+  
   title = paste0("Future invites by month for ", timepoint, " month timepoint")
   
   plot <- ggplot(all_dobs, aes(x = invite_month, fill = factor(longitudinal))) +
