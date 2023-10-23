@@ -811,13 +811,18 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
   }
   
   #bar chart 
-  
-  
   all_dobs$invite_month <- factor(all_dobs$invite_month, levels = unique(all_dobs$invite_month))
   
-  colors <- ifelse("Longitudinal" %in% all_dobs$longitudinal & "Not Longitudinal" %in% all_dobs$longitudinal, 
-                   c('#dabfff', '#907ad6'),
-                   ifelse("Longitudinal" %in% all_dobs$longitudinal, '#dabfff', '#907ad6'))
+  if ("Longitudinal" %in% all_dobs$longitudinal && "Not Longitudinal" %in% all_dobs$longitudinal) {
+    colors <- c('#dabfff', '#907ad6')
+  } else if ("Longitudinal" %in% all_dobs$longitudinal) {
+    colors <- '#dabfff'
+  } else if ("Not Longitudinal" %in% all_dobs$longitudinal) {
+    colors <- '#907ad6'
+  } else {
+    # Handle other cases if needed
+  }
+  
   
   title = paste0("Future invites by month for ", timepoint, " month timepoint")
   
