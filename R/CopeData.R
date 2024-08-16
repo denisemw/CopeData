@@ -778,7 +778,7 @@ get_mom_dob <- function(token) {
 #' @export
 get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none') {
   library(dplyr)
-  
+
   #creating data frame 
   age_in = case_when(
     timepoint == 6 ~ 142, timepoint == 9 ~ 243, timepoint == 12 ~ 336, timepoint == 18 ~ 504, timepoint == 30 ~ 870, timepoint == 42 ~ 1232
@@ -805,7 +805,9 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
   
   all_dobs$longitudinal <- ifelse(is.na(all_dobs$longitudinal), 'Not Longitudinal', all_dobs$longitudinal)
   
-  if (max_date != 'none') {
+  if (!is.na(max_date)) {
+    max_date = as.Date(max_date, format='%Y-%m-%d')
+    
     all_dobs <- all_dobs %>%
       filter(expected_invite_date <= max_date)
   }
