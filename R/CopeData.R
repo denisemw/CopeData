@@ -863,3 +863,75 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
   
   return(result)
 }
+
+
+#' Process Early Childhood Behavior Questionnaire Data
+#'
+#' This function will download and return the
+#' Early Childhood Behavior Questionnaire dataset for 30 months
+#'
+#' @param token Unique REDCap token ID
+#' @return A data frame for the completed surveys
+#' @export
+get_ecbq <- function(token) {
+  ecbq <- get_data(token, form='early_childhood_behavior_questionnaire_ecbq')
+  #reverse scoring items
+  ecbq$ecbq_escape_hugs <- 8 - ecbq$ecbq_escape_hugs #item 12
+  ecbq$ecbq_tire_frequency <- 8 - ecbq$ecbq_tire_frequency #item 14
+  ecbq$ecbq_easily_soothed <- 8 - ecbq$ecbq_easily_soothed #item 34
+  
+  #subscales
+  neg <- c('ecbq_tags_clothes','ecbq_bothered_sound', 'ecbq_afraid_vehicles', 'ecbq_no_desire_to_enter',
+           'ecbq_task_irritated', 'ecbq_temper_tantrum', 'ecbq_fiddle_frequency', 'ecbq_tearful_frequency', 'ecbq_seem_blue',
+           'ecbq_public_space_cling', 'ecbq_cry_3_min', 'ecbq_easily_soothed')
+  sur <- c('ecbq_quick_decision', 'ecbq_new_activity', 'ecbq_energy', 'ecbq_active_frequency', 'ecbq_run_house', 'ecbq_risk_enjoyment',
+           'ecbq_rough_games', 'ecbq_loved_ones_visiting', 'ecbq_new_toy_excitement', 'ecbq_seek_out_company', 'ecbq_desire_to_interact',
+           'ecbq_different_people')
+  ec <- c('ecbq_forbidden_activity', 'ecbq_patience', 'ecbq_careful_breakable', 'ecbq_simultaneous_play', 'ecbq_attention_name',
+          'ecbq_another_activity', 'ecbq_more_than_10_min', 'ecbq_tire_frequency', 'ecbq_escape_hugs', 'ecbq_mold_to_body',
+          'ecbq_enjoy_singing', 'ecbq_smile_frequency')
+  
+  #scale means
+  ecbq$ecbq_neg <- rowMeans(ecbq[, neg], na.rm = T)
+  ecbq$ecbq_sur <- rowMeans(ecbq[, sur], na.rm = T)
+  ecbq$ecbq_ec <- rowMeans(ecbq[, ec], na.rm = T)
+  
+  #making final dataset
+  ecbq <- dplyr::select(ecbq, record_id, early_childhood_behavior_questionnaire_ecbq_timestamp,
+                        ecbq_neg, ecbq_sur, ecbq_ec)
+  
+  return(ecbq)
+}
+
+#' Process 42m Childhood Behavior Questionnaire Data
+#'
+#' This function will download and return the
+#' Childhood Behavior Questionnaire dataset for 42 months
+#'
+#' @param token Unique REDCap token ID
+#' @return A data frame for the completed surveys
+#' @export
+get_cbq <- function(token) {
+  cbq <- get_data(token, form='child_behavior_questionnaire_very_short_form_cbqvs')
+  
+  #reverse scoring
+  reversed <- c('cbq13', 'cbq19', 'cbq22', 'cbq31', 'cbq34', 'cbq20', 'cbq26', 'cbq29')
+  cbq[reversed] <- lapply(cbq[reversed], function(x) 8 - x)
+  
+  neg <- c('cbq2', 'cbq5', 'cbq8', 'cbq11', 'cbq14', 'cbq17', 'cbq20', 'cbq23', 'cbq26', 'cbq29', 'cbq32', 'cbq35')
+  sur <- c('cbq1', 'cbq4', 'cbq7', 'cbq10', 'cbq13', 'cbq16', 'cbq19', 'cbq22', 'cbq25', 'cbq28', 'cbq31', 'cbq34')
+  ec <- c('cbq3', 'cbq6', 'cbq9', 'cbq12', 'cbq15', 'cbq18', 'cbq21', 'cbq24', 'cbq27', 'cbq30', 'cbq33', 'cbq36')
+  
+  #scale means
+  cbq$cbq_neg <- rowMeans(cbq[, neg], na.rm = T)
+  cbq$cbq_sur <- rowMeans(cbq[, sur], na.rm = T)
+  cbq$cbq_ec <- rowMeans(cbq[, ec], na.rm = T)
+  
+  #making final dataset
+  cbq <- dplyr::select(cbq, record_id, child_behavior_questionnaire_very_short_form_cbqvs_timestamp,
+                       cbq_neg, cbq_sur, cbq_ec)
+  
+  return(cbq)
+  
+}
+
