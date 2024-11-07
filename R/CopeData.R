@@ -776,7 +776,6 @@ get_mom_dob <- function(token) {
 #' @param max_date The max date you wish to pull data for (e.g. '2024-06-01'), default is all future invites
 #' @return A list with 1) data frame of all ids, invite date, month, longitudinal status, 2) stacked bar chart of counts by month, 3) data frame of counts by month
 #' @export
-library(CopeData)
 get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none') {
   library(dplyr)
 
