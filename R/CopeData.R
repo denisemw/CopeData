@@ -121,10 +121,11 @@ get_chaos <- function(token, timepoint = "infant_9months_arm_1") {
   chaos$chaos_arguement = abs(5 - chaos$chaos_arguement)
   chaos$chaos_rushed = abs(5 - chaos$chaos_rushed)
 
-  chaos$total_score =  rowMeans(chaos[,c("chaos_late", "chaos_commotion","chaos_rushed", "chaos_interrupt", "chaos_plans",
+  chaos$chaos_score =  rowMeans(chaos[,c("chaos_late", "chaos_commotion","chaos_rushed", "chaos_interrupt", "chaos_plans",
                                          "chaos_arguement", "chaos_routine","chaos_findthings", "chaos_ontop",
                                          "chaos_zoo", "chaos_fuss", "chaos_think", "chaos_rushed", "chaos_relax", "chaos_calm")], na.rm=T)
-  chaos = chaos[,c("record_id", "redcap_event_name", "confusion_hubbub_and_order_scale_chaos_timestamp", "total_score")]
+  chaos = dplyr::rename(chaos, chaos_timestamp = confusion_hubbub_and_order_scale_chaos_timestamp)
+  chaos = chaos[,c("record_id", "redcap_event_name", "chaos_timestamp", "chaos_score")]
   return (chaos)
 }
 
@@ -305,7 +306,7 @@ get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
 get_parent_stress <- function(token, timepoint = "infant_9months_arm_1") {
   parent_stress = get_data(token, form = "parenting_stress_index_fourth_edition_short_form_p")
   parent_stress = parent_stress %>% dplyr::filter(redcap_event_name == timepoint)
-  parent_stress$psi = rowMeans(parent_stress[, 7:42])
+  parent_stress$psi = rowMeans(parent_stress[, 7:42], na.rm=T)
   parent_stress = parent_stress[,c("record_id", "parenting_stress_index_fourth_edition_short_form_p_timestamp","psi")]
   return (parent_stress)
 }
@@ -348,7 +349,7 @@ get_parent_strain <- function(token, timepoint = "infant_6months_arm_1") {
   parent_strain =  dplyr::filter(parent_strain, redcap_event_name == timepoint)
   cols = c(1,6,8,10,12,14,16,18,20,22)
   parent_strain = parent_strain[,cols]
-  parent_strain$strain = rowMeans(parent_strain[,3:10])
+  parent_strain$strain = rowMeans(parent_strain[,3:10], na.rm=T)
   parent_strain = parent_strain[,c("record_id", "parenting_stress_role_strain_covid_timestamp","strain")]
 }
 
@@ -935,3 +936,350 @@ get_cbq <- function(token) {
   
 }
 
+#' Process Social Support data
+#'
+#' This function will download and compute total scores for the
+#' Social Support scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_social_support <- function(token, timepoint = 'infant_6months_arm_1') {
+  library(dplyr)
+  ss = get_data(token, 'social_support')
+  
+  ss = filter(ss, redcap_event_name == timepoint)
+  
+  ss$ss_score_sum = rowSums(ss[, c('support3', 'support4', 'support5', 'support6', 'support7', 'support8', 'support9', 
+                                   'support10', 'support11', 'support12', 'support13', 'support14', 'support15', 'support16',
+                                   'support17', 'support18', 'support19', 'support20')], na.rm=T)
+  
+  ss$ss_score_mean = rowMeans(ss[, c('support3', 'support4', 'support5', 'support6', 'support7', 'support8', 'support9', 
+                                     'support10', 'support11', 'support12', 'support13', 'support14', 'support15', 'support16',
+                                     'support17', 'support18', 'support19', 'support20')], na.rm=T)
+  
+  ss$support1 <- as.numeric(ss$support1)
+  ss$support2 <- as.numeric(ss$support2)
+  
+  ss <- ss %>%
+    select(record_id, social_support_timestamp, support1, support2, ss_score_sum, ss_score_mean) %>%
+    rename(ss_relatives_num = support1, ss_friends_num = support2,
+           ss_timestamp = social_support_timestamp)
+  
+  
+  return(ss)
+  
+}
+
+#' Process PSQI data
+#'
+#' This function will download and compute total scores for the
+#' Pit Sleep Quality Index scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_pisq <- function(token, timepoint = 'infant_6months_arm_1') {
+  library(dplyr)
+  library(hms)
+  sleep = get_data(token, "pit_sleep_quality_index")
+  sleep = sleep %>% filter(redcap_event_name == timepoint)
+  
+  sleep$sleep_q4 = as.numeric(sleep$sleep_q4)
+  max(sleep$sleep_q4,na.rm=T)
+  
+  ### HUGE OUTLIER (INCORRECT DATA ENTRY?), REMOVED AND FLAGGED AS MISSING DATA
+  sleep[sleep$sleep_q4 == 1200, "sleep_q4"] = NA
+  
+  sleep[sleep$sleep_q2 <= 15, "sleep_q2_scored"] = 0
+  sleep[sleep$sleep_q2 > 15 & sleep$sleep_q2 <= 30, "sleep_q2_scored"] = 1
+  sleep[sleep$sleep_q2 > 30 & sleep$sleep_q2 <= 60, "sleep_q2_scored"] = 2
+  sleep[sleep$sleep_q2 > 60, "sleep_q2_scored"] = 3
+  
+  sleep[!is.na(sleep$sleep_q4) & sleep$sleep_q4 > 7, "sleep_q4_scored"] = 0
+  sleep[!is.na(sleep$sleep_q4) & sleep$sleep_q4 > 6 & sleep$sleep_q4 <= 7, "sleep_q4_scored"] = 1
+  sleep[!is.na(sleep$sleep_q4) & sleep$sleep_q4 > 5 & sleep$sleep_q4 <= 6, "sleep_q4_scored"] = 2
+  sleep[!is.na(sleep$sleep_q4) & sleep$sleep_q4 <= 5, "sleep_q4_scored"] = 3
+  
+  sleep$sleep_q1_recoded = sleep$sleep_q1
+  sleep$sleep_latency = rowSums(sleep[,c("sleep_q2_scored", "sleep_q5a", "sleep_q9")])
+  sleep[!is.na(sleep$sleep_latency) & sleep$sleep_latency ==0, "sleep_latency_scored"] = 0
+  sleep[!is.na(sleep$sleep_latency) & sleep$sleep_latency >= 1 & sleep$sleep_latency < 3, "sleep_latency_scored"] = 1
+  sleep[!is.na(sleep$sleep_latency) & sleep$sleep_latency >= 3 & sleep$sleep_latency < 5, "sleep_latency_scored"] = 2
+  sleep[!is.na(sleep$sleep_latency) & sleep$sleep_latency >= 5, "sleep_latency_scored"] = 3
+  
+  sleep$timeinbed = difftime(sleep$sleep_q3, sleep$sleep_q1, units="hours")
+  sleep[sleep$timeinbed < -8, "timeinbed"] = sleep[sleep$timeinbed < -8, "timeinbed"] + 24
+  sleep[sleep$timeinbed < 0, "timeinbed"] = sleep[sleep$timeinbed < 0, "timeinbed"] + 12
+  
+  sleep$timeinbed = as.numeric(sleep$timeinbed)
+  sleep$sleep_efficiency = sleep$sleep_q4 / sleep$timeinbed
+  
+  sleep[!is.na(sleep$sleep_efficiency) & sleep$sleep_efficiency >= .85, "sleep_efficiency_scored"] = 0
+  sleep[!is.na(sleep$sleep_efficiency) & sleep$sleep_efficiency >= .75 & sleep$sleep_efficiency < .85, "sleep_efficiency_scored"] = 1
+  sleep[!is.na(sleep$sleep_efficiency) & sleep$sleep_efficiency >= .65 & sleep$sleep_efficiency < .75, "sleep_efficiency_scored"] = 2
+  sleep[!is.na(sleep$sleep_efficiency) & sleep$sleep_efficiency < .65, "sleep_efficiency_scored"] = 3
+  
+  sleep$sleep_disturbance = rowSums(sleep[,12:20], na.rm=T)
+  
+  sleep[sleep$sleep_disturbance ==0, "sleep_disturbance_scored"] = 0
+  sleep[sleep$sleep_disturbance >= 1 & sleep$sleep_disturbance < 10, "sleep_disturbance_scored"] = 1
+  sleep[sleep$sleep_disturbance >= 10 & sleep$sleep_disturbance < 19, "sleep_disturbance_scored"] = 2
+  sleep[sleep$sleep_disturbance >= 19, "sleep_disturbance_scored"] = 3
+  
+  
+  sleep$daytime_dysfunction = rowSums(sleep[,c("sleep_q7", "sleep_q8")])
+  sleep[!is.na(sleep$daytime_dysfunction) & sleep$daytime_dysfunction < 2, "daytime_dysfunction_scored"] = 0
+  sleep[!is.na(sleep$daytime_dysfunction) & sleep$daytime_dysfunction >= 2 & sleep$daytime_dysfunction < 4, "daytime_dysfunction_scored"] = 1
+  sleep[!is.na(sleep$daytime_dysfunction) & sleep$daytime_dysfunction >= 4 & sleep$daytime_dysfunction < 6, "daytime_dysfunction_scored"] = 2
+  sleep[!is.na(sleep$daytime_dysfunction) & sleep$daytime_dysfunction >= 6, "daytime_dysfunction_scored"] = 3
+  
+  sleep$pisq_score = rowSums(sleep[,c("sleep_latency_scored", "sleep_q4_scored", "sleep_q9", "sleep_efficiency_scored", "sleep_disturbance_scored", "daytime_dysfunction_scored")])
+  
+  
+  sleep <- sleep %>%
+    rename(pisq_timestamp = pit_sleep_quality_index_timestamp) %>%
+    select(record_id, pisq_timestamp, sleep_q2_scored:pisq_score)
+  
+  return(sleep)
+  
+}
+
+
+#' Process PRQC-SF data
+#'
+#' This function will download and compute total scores for the
+#' Perceived Relationship Quality Component scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_prqc <- function(token, timepoint='infant_6months_arm_1') {
+  library(dplyr)
+  prqc <- get_data(token, form='relationship_quality_prqcsf_covid')
+  prqc <- filter(prqc, redcap_event_name == timepoint)
+  
+  prqc <- prqc %>%
+    rename(prqc_satisfaction_precov = prqc_q01, prqc_satisfaction_now = prqc_q02,
+           prqc_commitment_precov = prqc_q03, prqc_commitment_now = prqc_q04,
+           prqc_intimacy_precov = prqc_q05, prqc_intimacy_now = prqc_q06,
+           prqc_trust_precov = prqc_q07, prqc_trust_now = prqc_q08,
+           prqc_passion_precov = prqc_q09, prqc_passion_now = prqc_q10,
+           prqc_love_precov = prqc_q11, prqc_love_now = prqc_q12,
+           prqc_special_effort_precov = prqc_q13, prqc_special_effort_now = prqc_q14)
+  
+  prqc <- prqc %>%
+    rename(prqc_timestamp = relationship_quality_prqcsf_covid_timestamp) %>%
+    select(record_id, prqc_timestamp, prqc_satisfaction_precov:prqc_special_effort_now)
+  
+  return(prqc)
+}
+
+#' Process Infant Care Questionnaire - REPLAACE
+#'
+#' This function will download and compute total scores for the
+#' Infant Care Questionnaire scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
+  library(dplyr)
+  icq <- get_data(token, form='infant_care_questionnaire')
+  icq <- filter(icq, redcap_event_name == timepoint)
+  
+  #reverse scoring
+  reversed <- c('icq_12', 'icq_15', 'icq_17', 'icq_18', 'icq_22')
+  icq[reversed] <- lapply(icq[reversed], function(x) 6 - x)
+  
+  #d1: mom&baby
+  d1_cols <- c('icq_1', 'icq_2', 'icq_3', 'icq_4', 'icq_5', 'icq_6', 'icq_7', 'icq_8', 'icq_9', 'icq_10',
+               'icq_11', 'icq_12', 'icq_13', 'icq_14')
+  icq$icq_mom_baby = rowMeans(icq[, d1_cols], na.rm=T)
+  
+  #d2: emotionality
+  d2_cols = c('icq_15', 'icq_16', 'icq_17', 'icq_18')
+  icq$icq_emotionality = rowMeans(icq[, d2_cols], na.rm=T)
+  
+  #d3: responsiveness
+  d3_cols = c('icq_19', 'icq_20', 'icq_21', 'icq_22')
+  icq$icq_responsiveness = rowMeans(icq[, d3_cols], na.rm=T)
+  
+  icq <- icq %>%
+    rename(icq_timestamp) %>%
+    select(record_id, icq_timestamp, icq_mom_baby, icq_emotionality, icq_responsiveness)
+  
+  return(icq)
+}
+
+#' Process CESD Depression Scores 
+#'
+#' This function will download and compute total scores for the
+#' CESD scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_12months2_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_cesd <- function(token, timepoint = 'infant_12months2_arm_1') {
+  library(dplyr)
+  cesd <- get_data(token, form='center_for_epidemiologic_studies_depression_scale')
+  cesd <- filter(cesd, redcap_event_name == timepoint)
+  
+  #4s need to be replaced with NAs (i don't know)
+  cesd[cesd == 4] <- NA
+  #items 4,8,12,16 need to be reverse scored
+  reversed = c('cesd4', 'cesd8', 'cesd12', 'cesd16')
+  cesd[reversed] <- lapply(cesd[reversed], function(x) 3 - x)
+  
+  cesd$cesd_score <- rowSums(cesd[, 7:26], na.rm=T)
+  
+  cesd <- cesd %>%
+    rename(cesd_timestamp = center_for_epidemiologic_studies_depression_scale_timestamp) %>%
+    select(record_id, cesd_timestamp, cesd_score)
+  
+  return(cesd)
+  
+}
+
+#' Process Patient Health Questionnaire Scores 
+#'
+#' This function will download and compute total scores for the
+#' PHQ scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_9months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_phq <- function(token, timepoint='infant_9months_arm_1') {
+  library(dplyr)
+  phq <- get_data(token, form='patient_health_questionnaire_9')
+  phq <- filter(phq, redcap_event_name == timepoint)
+  
+  cols <- c('phq9_1', 'phq9_2', 'phq9_3', 'phq9_4', 'phq9_5', 'phq9_6', 'phq9_7', 'phq9_8', 'phq9_9')
+  phq$phq_score <- rowSums(phq[, cols], na.rm=T)
+  
+  phq <- phq %>%
+    mutate(phq_severity = case_when(
+      phq_score <= 4 ~ 1, phq_score >= 5 & phq_score <= 9 ~ 2, phq_score >= 10 & phq_score <= 14 ~ 3,
+      phq_score >= 15 & phq_score <= 19 ~ 4, phq_score >= 20 & phq_score <= 27 ~ 4
+    ))
+  
+  phq <- phq %>%
+    rename(phq_difficulty = phq9_how_difficult, phq_timestamp = patient_health_questionnaire_9_timestamp) %>%
+    select(record_id, phq_timestamp, phq_score, phq_difficulty, phq_severity)
+  
+  return(phq)
+  
+}
+
+#' Process Early Executives Functions Questionnaire
+#'
+#' This function will download and compute total scores for the
+#' EEFQ scale
+#'
+#' @param token Unique REDCap token ID
+#' @return A data frame for the completed surveys
+#' @export
+get_eefq <- function(token) {
+  library(dplyr)
+  eefq <- get_data(token, form='early_executive_function_q_survey')
+  
+  eefq[eefq == 8] <- NA
+  
+  reversed = c("matrix_3", "matrix_9", "matrix_11", "matrix_16", "matrix_22", "matrix_23", "matrix_24", "matrix_25", "matrix_26", "matrix_27", "matrix_28")
+  eefq[reversed] <- lapply(eefq[reversed], function(x) 8 - x)
+  
+  ic <- c("matrix_1", "matrix_2", "matrix_3", "matrix_4", "matrix_5", "matrix_6", "matrix_7")
+  fx <- c("matrix_8", "matrix_9", "matrix_10", "matrix_11", "matrix_12", "matrix_13", "matrix_14")
+  wm <- c("matrix_15", "matrix_16", "matrix_17", "matrix_18", "matrix_19", "matrix_20")
+  rg <- c("matrix_21", "matrix_22", "matrix_23", "matrix_24", "matrix_25", "matrix_26", "matrix_27", "matrix_28")
+  
+  eefq$eefq_ic <- rowMeans(eefq[, ic], na.rm=T)
+  eefq$eefq_fx <- rowMeans(eefq[, fx], na.rm=T)
+  eefq$eefq_wm <- rowMeans(eefq[, wm], na.rm=T)
+  eefq$eefq_rg <- rowMeans(eefq[, rg], na.rm=T)
+  
+  eefq <- eefq %>%
+    rename(eefq_timestamp = early_executive_function_q_survey_timestamp,
+           eefq_ic_waiting_game = eefq_waiting_game, eefq_wm_finding_game = eefq_finding_game, eefq_fx_sorting_game = eefq_sorting_game) %>%
+    select(record_id, eefq_timestamp, eefq_ic, eefq_fx, eefq_wm, eefq_rg, eefq_ic_waiting_game, eefq_fx_sorting_game, eefq_wm_finding_game)
+  
+  return(eefq)
+}
+
+#' Process Difficulties in Emotion Regulation Scores
+#'
+#' This function will download and compute total scores for the
+#' DERS scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_30months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_ders <- function(token, timepoint='infant_30months_arm_1') {
+  library(dplyr)
+  ders <- get_data(token, form='difficulties_in_emotional_regulation_ders16item')
+  ders <- filter(ders, redcap_event_name == timepoint)
+  
+  ders$ders_non_accept <- rowSums(ders[, c('ders_9', 'ders_10', 'ders_13')], na.rm=T)
+  ders$ders_goals <- rowSums(ders[, c('ders_3', 'ders_7', 'ders_15')], na.rm=T)
+  ders$ders_impulse <- rowSums(ders[, c('ders_4', 'ders_8', 'ders_11')], na.rm=T)
+  ders$ders_strategies <- rowSums(ders[, c('ders_5', 'ders_6', 'ders_12', 'ders_14', 'ders_16')], na.rm=T)
+  ders$ders_clarity <- rowSums(ders[, c('ders_1', 'ders_2')], na.rm=T)
+  
+  ders <- ders %>%
+    rename(ders_timestamp = difficulties_in_emotional_regulation_ders16item_timestamp) %>%
+    select(record_id, ders_timestamp, ders_non_accept, ders_goals, ders_impulse, ders_strategies, ders_clarity)
+  
+  return(ders)
+  
+}
+
+#' Process IOUS Scores
+#'
+#' This function will download and compute total scores for the
+#' IOUS scale
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name (default is 'infant_30months_arm_1')
+#' @return A data frame for the completed surveys
+#' @export
+get_ious27 <- function(token, timepoint='infant_30months_arm_1') {
+  library(dplyr)
+  
+  ious <- get_data(token, form='intolerance_of_uncertainty_scale_ius27item')
+  ious <- filter(ious, redcap_event_name == timepoint)
+  
+  ious$ious27_score <- rowSums(ious[, 7:33], na.rm=T)
+  
+  ious <- ious %>%
+    rename(ious27_timestamp = intolerance_of_uncertainty_scale_ius27item_timestamp) %>%
+    select(record_id, ious27_timestamp, ious27_score)
+  
+  return(ious)
+  
+}
+
+#' Process Beck Depression Scores 
+#'
+#' This function will download and compute total scores for the
+#' Beck Depression Inventory 
+#'
+#' @param token Unique REDCap token ID
+#' @return A data frame for the completed surveys
+#' @export
+get_beck <- function(token) {
+  library(dplyr)
+  beck <- get_data(token, form='becks_depression_inventory')
+  
+  beck <- beck %>%
+    rename(beck_timestamp = becks_depression_inventory_timestamp) %>%
+    select(record_id, beck_timestamp, beck_score, beck_severity)
+  
+  return(beck)
+}
