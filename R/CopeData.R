@@ -1110,7 +1110,7 @@ get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
   icq$icq_responsiveness = rowMeans(icq[, d3_cols], na.rm=T)
   
   icq <- icq %>%
-    rename(icq_timestamp) %>%
+    rename(icq_timestamp = infant_care_queestionnaire_timestamp) %>%
     select(record_id, icq_timestamp, icq_mom_baby, icq_emotionality, icq_responsiveness)
   
   return(icq)
@@ -1282,4 +1282,41 @@ get_beck <- function(token) {
     select(record_id, beck_timestamp, beck_score, beck_severity)
   
   return(beck)
+}
+
+#' Process State-Trait Anxiety Inventory Scores 
+#'
+#' This function will download and compute total scores for the
+#' STAI
+#'
+#' @param token Unique REDCap token ID
+#' @return A data frame for the completed surveys
+#' @export
+get_stai <- function(token) {
+  library(dplyr)
+  stai <- get_data(token, form='state_trait_anxiety_inventory')
+  
+  reversed <- c('stai_tense', 'stai_strained', 'stai_upset', 'stai_misfortune', 'stai_frightened', 'stai_nervous', 'stai_jittery',
+                'stai_indecisive', 'stai_worried', 'stai_confused', 'stai_nervrest', 'stai_failure', 'stai_difficultiespiling', 'stai_worrymatter',
+                'stai_disturbingthoughts', 'stai_selfconfidence', 'stai_inadequate', 'stai_unimportantthoughts', 'stai_disappointment',
+                'stai_tension')
+  stais <- c('stai_calm', 'stai_secure', 'stai_tense', 'stai_strained', 'stai_ease', 'stai_upset', 'stai_misfortune', 'stai_satisfied',
+             'stai_frightened', 'stai_comfortable', 'stai_selfconfident', 'stai_nervous', 'stai_jittery', 'stai_indecisive', 'stai_relaxed',
+             'stai_feelcontent', 'stai_worried', 'stai_confused', 'stai_steady', 'stai_pleasant')
+  
+  stait <- c('stai_nervrest', 'stai_satisfiedself', 'stai_happyothers', 'stai_failure', 'stai_rested', 'stai_calmcool', 'stai_difficultiespiling',
+             'stai_worrymatter', 'stai_happy', 'stai_disturbingthoughts', 'stai_selfconfidence', 'stai_secure2','stai_decisioneasily', 'stai_inadequate',
+             'stai_amcontent', 'stai_unimportantthoughts', 'stai_disappointment', 'stai_steadyperson', 'stai_tension')
+  
+  stai[reversed] <- lapply(stai[reversed], function(x) 5 - x)
+  
+  stai$stai_s = rowSums(stai[stais], na.rm=T)
+  stai$stai_t = rowSums(stai[stait], na.rm=T)
+  
+  stai <- stai %>%
+    rename(stai_timestamp = state_trait_anxiety_inventory_timestamp) %>%
+    select(record_id, stai_timestamp, stai_s, stai_t)
+  
+  return(stai)
+  
 }
