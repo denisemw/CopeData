@@ -1110,7 +1110,7 @@ get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
   icq$icq_responsiveness = rowMeans(icq[, d3_cols], na.rm=T)
   
   icq <- icq %>%
-    rename(icq_timestamp = infant_care_queestionnaire_timestamp) %>%
+    rename(icq_timestamp = infant_care_questionnaire_timestamp) %>%
     select(record_id, icq_timestamp, icq_mom_baby, icq_emotionality, icq_responsiveness)
   
   return(icq)
