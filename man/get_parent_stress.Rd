@@ -4,12 +4,14 @@
 \alias{get_parent_stress}
 \title{Process Parenting Stress Index data}
 \usage{
-get_parent_stress(token, timepoint = "infant_9months_arm_1")
+get_parent_stress(token, timepoint = "infant_9months_arm_1", all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
 
 \item{timepoint}{Survey timepoint branch requested}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

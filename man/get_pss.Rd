@@ -4,12 +4,14 @@
 \alias{get_pss}
 \title{Process Perceived Stress data}
 \usage{
-get_pss(token, timepoint = "infant_6months_arm_1")
+get_pss(token, timepoint = "infant_6months_arm_1", all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
 
 \item{timepoint}{Survey timepoint branch requested}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

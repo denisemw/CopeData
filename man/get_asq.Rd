@@ -4,10 +4,12 @@
 \alias{get_asq}
 \title{Process ASQ data}
 \usage{
-get_asq(token)
+get_asq(token, all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the processed ASQ data

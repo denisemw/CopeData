@@ -4,12 +4,14 @@
 \alias{get_prqc}
 \title{Process PRQC-SF data}
 \usage{
-get_prqc(token, timepoint = "infant_6months_arm_1")
+get_prqc(token, timepoint = "infant_6months_arm_1", all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
 
 \item{timepoint}{redcap event name (default is 'infant_6months_arm_1')}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

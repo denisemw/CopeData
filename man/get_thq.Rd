@@ -4,10 +4,12 @@
 \alias{get_thq}
 \title{Process Trauma History data}
 \usage{
-get_thq(token)
+get_thq(token, all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

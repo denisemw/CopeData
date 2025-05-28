@@ -4,12 +4,14 @@
 \alias{get_phq}
 \title{Process Patient Health Questionnaire Scores}
 \usage{
-get_phq(token, timepoint = "infant_9months_arm_1")
+get_phq(token, timepoint = "infant_9months_arm_1", all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
 
 \item{timepoint}{redcap event name (default is 'infant_9months_arm_1')}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

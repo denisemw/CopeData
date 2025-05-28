@@ -4,10 +4,12 @@
 \alias{get_stai}
 \title{Process State-Trait Anxiety Inventory Scores}
 \usage{
-get_stai(token)
+get_stai(token, all_items = F)
 }
 \arguments{
 \item{token}{Unique REDCap token ID}
+
+\item{all_items}{Boolean - whether to pull raw item scores as well as the subscales}
 }
 \value{
 A data frame for the completed surveys

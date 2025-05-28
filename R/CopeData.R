@@ -108,9 +108,12 @@ get_prenatal_covid_records <- function(token) {
 #' CHAOS scale
 #'
 #' @param token Unique REDCap token ID
+#' @param timepoint Redcap event name
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_chaos <- function(token, timepoint = "infant_9months_arm_1") {
+get_chaos <- function(token, timepoint = "infant_9months_arm_1", all_items=F) {
+  library(dplyr)
   chaos = get_data(token, "confusion_hubbub_and_order_scale_chaos")
   chaos = dplyr::filter(chaos, redcap_event_name == timepoint)
   chaos$chaos_late = abs(5 - chaos$chaos_late)
@@ -123,12 +126,20 @@ get_chaos <- function(token, timepoint = "infant_9months_arm_1") {
 
   chaos$chaos_score =  rowMeans(chaos[,c("chaos_late", "chaos_commotion","chaos_rushed", "chaos_interrupt", "chaos_plans",
                                          "chaos_arguement", "chaos_routine","chaos_findthings", "chaos_ontop",
-                                         "chaos_zoo", "chaos_fuss", "chaos_think", "chaos_rushed", "chaos_relax", "chaos_calm")], na.rm=T)
+                                         "chaos_zoo", "chaos_fuss", "chaos_think", "chaos_relax", "chaos_calm")], na.rm=T)
+
   chaos = dplyr::rename(chaos, chaos_timestamp = confusion_hubbub_and_order_scale_chaos_timestamp)
-  chaos = chaos[,c("record_id", "redcap_event_name", "chaos_timestamp", "chaos_score")]
+  
+  if (!all_items) {
+    chaos <- chaos %>%
+      select(record_id, redcap_event_name, chaos_timestamp, chaos_score)
+  } else {
+    chaos <- chaos %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -confusion_hubbub_and_order_scale_chaos_complete)
+  }
+  
   return (chaos)
 }
-
 
 
 #' Process ASQ data
@@ -138,18 +149,32 @@ get_chaos <- function(token, timepoint = "infant_9months_arm_1") {
 #' not cut off values, are returned.
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the processed ASQ data
 #' @export
-get_asq <- function(token) {
+get_asq <- function(token, all_items=F) {
+  library(dplyr)
+  
   asq = get_data(token, "asq3_6_month_questionnaire")
   asq$comm = rowSums(asq[,7:12],na.rm=TRUE)
   asq$grossmotor = rowSums(asq[,13:18],na.rm=TRUE)
   asq$finemotor = rowSums(asq[,19:24],na.rm=TRUE)
   asq$probsolve = rowSums(asq[,25:30],na.rm=TRUE)
   asq$social = rowSums(asq[,31:36],na.rm=TRUE)
-  asq = asq[,c("record_id", "asq3_6_month_questionnaire_timestamp","comm", "grossmotor", "finemotor", "probsolve", "social")]
+  
+  asq <- rename(asq, asq3_timestamp = asq3_6_month_questionnaire_timestamp)
+  
+  if (!all_items) {
+    asq <- asq %>%
+      select(record_id, redcap_event_name, asq3_timestamp, comm, grossmotor, finemotor, probsolve, social)
+  } else {
+    asq <- asq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -asq3_6_month_questionnaire_complete)
+  }
+  
   return (asq)
 }
+
 
 #' Process Perceived Stress data
 #'
@@ -158,12 +183,24 @@ get_asq <- function(token) {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_pss <- function(token, timepoint = "infant_6months_arm_1") {
+get_pss <- function(token, timepoint = "infant_6months_arm_1", all_items=F) {
+  library(dplyr)
   pss = get_data(token, "perceived_stress_scale_pss")
   pss = dplyr::filter(pss, redcap_event_name == timepoint)
-  pss = pss[,c("record_id", "perceived_stress_scale_pss_timestamp", "pss_score", "pss_14_score")]
+  
+  pss = rename(pss, pss_timestamp = perceived_stress_scale_pss_timestamp)
+  
+  if (!all_items) {
+    pss <- pss %>%
+      select(record_id, redcap_event_name, pss_timestamp, pss_score, pss_14_score)
+  } else {
+    pss <- pss %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -perceived_stress_scale_pss_complete)
+  }
+
   return (pss)
 }
 
@@ -175,9 +212,11 @@ get_pss <- function(token, timepoint = "infant_6months_arm_1") {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_epds <- function(token, timepoint = "infant_6months_arm_1") {
+get_epds <- function(token, timepoint = "infant_6months_arm_1", all_items=F) {
+  library(dplyr)
   epds = get_data(token, "cope_epds")
   epds = dplyr::filter(epds, redcap_event_name == timepoint)
 
@@ -190,8 +229,16 @@ get_epds <- function(token, timepoint = "infant_6months_arm_1") {
     epds$epds_7_v2 + epds$epds_8_v2 + epds$epds_9_v2 + epds$epds_10_v2
 
   epds$epds_anx = epds$epds_4_v2 + epds$epds_5_v2 + epds$epds_6_v2
+  epds <- rename(epds, epds_timestamp = cope_epds_timestamp)
+  
+  if (!all_items) {
+    epds <- epds %>%
+      select(record_id, redcap_event_name, epds_timestamp, epds_all, epds_dep, epds_anx)
+  } else {
+    epds <- epds %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -cope_epds_complete)
+  }
 
-  epds = epds[,c("record_id", "cope_epds_timestamp","epds_all", "epds_dep", "epds_anx")]
   return (epds)
 }
 
@@ -201,14 +248,24 @@ get_epds <- function(token, timepoint = "infant_6months_arm_1") {
 #' of traumatic events reported by subjects.
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_thq <- function(token) {
+get_thq <- function(token, all_items=F) {
+  library(dplyr)
   thq = get_data(token, "thq")
   thq[["thq_events_number"]][is.na(thq[["thq_events_number"]])] <- 0
   thq[["thq_24"]][is.na(thq[["thq_24"]])] <- 0
   thq[thq[, "thq_24"] == 1,"thq_events_number"] = thq[thq[, "thq_24"] == 1,"thq_events_number"] + 1
-  thq <- thq[,c("record_id", "thq_timestamp","thq_events_number")]
+  
+  if (!all_items) {
+    thq <- thq %>%
+      select(record_id, redcap_event_name, thq_timestamp, thq_events_number)
+  } else {
+    thq <- thq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -thq_complete)
+  }
+
   return (thq)
 }
 
@@ -219,9 +276,11 @@ get_thq <- function(token) {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_parent_reward <- function(token, timepoint = "infant_3months_arm_1") {
+get_parent_reward <- function(token, timepoint = "infant_3months_arm_1", all_items=F) {
+  library(dplyr)
   parent_reward = get_data(token, "parenting_reward_questionnaire", form_complete = T)
   parent_reward =  dplyr::filter(parent_reward, redcap_event_name == timepoint)
   parent_reward$scale_reward = parent_reward$scale_reward/2
@@ -230,7 +289,17 @@ get_parent_reward <- function(token, timepoint = "infant_3months_arm_1") {
                                                                   "prq_matrix_q05","prq_matrix_q06r", "prq_matrix_q07","prq_matrix_q08","prq_matrix_q09",
                                                                   "prq_matrix_q10","prq_matrix_q11","prq_matrix_q12","prq_matrix_q13",
                                                                   "prq_matrix_q14", "scale_reward")], na.rm=T)
-  parent_reward = parent_reward[,c("record_id", "parenting_reward_questionnaire_timestamp", "parenting_reward_avg")]
+  
+  parent_reward <- rename(parent_reward, parenting_reward_timestamp = parenting_reward_questionnaire_timestamp)
+  
+  if (!all_items) {
+    parent_reward <- parent_reward %>%
+      select(record_id, redcap_event_name, parenting_reward_timestamp, parenting_reward_avg)
+  } else {
+    parent_reward <- parent_reward %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -parenting_reward_questionnaire_complete)
+  }
+
   return(parent_reward)
 }
 
@@ -241,15 +310,26 @@ get_parent_reward <- function(token, timepoint = "infant_3months_arm_1") {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_reward <- function(token, timepoint = "infant_3months_arm_1") {
+get_reward <- function(token, timepoint = "infant_3months_arm_1", all_items=F) {
+  library(dplyr)
   reward = get_data(token, "reward_responsivity_questionnaire")
   reward = dplyr::filter(reward, redcap_event_name == timepoint)
   rew_start = which( colnames(reward)=="rrq_matrix_q01" )
   rew_end = rew_start+7
   reward$reward_avg = rowMeans(reward[,rew_start:rew_end],na.rm=T)
-  reward = reward[,c("record_id","reward_responsivity_questionnaire_timestamp", "reward_avg")]
+  reward = rename(reward, reward_timestamp = reward_responsivity_questionnaire_timestamp)
+  
+  if (!all_items) {
+    reward <- reward %>%
+      select(record_id, redcap_event_name, reward_timestamp, reward_avg)
+  } else {
+    reward <- reward %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -reward_responsivity_questionnaire_complete)
+  }
+
   return(reward)
 }
 
@@ -261,11 +341,19 @@ get_reward <- function(token, timepoint = "infant_3months_arm_1") {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
+get_bitsea <- function(token, timepoint = "infant_12months2_arm_1", all_items=F) {
+  library(dplyr)
   bitsea = get_data(token, "brief_infanttoddler_social_and_emotional_assessmen")
-  bitsea = dplyr::filter(bitsea, redcap_event_name == timepoint)
+  
+  if (str_detect(timepoint, '12months')) {
+    bitsea = dplyr::filter(bitsea, redcap_event_name == 'infant_12months2_arm_1' | redcap_event_name == 'infant_12months3_arm_1')
+  } else {
+    bitsea = dplyr::filter(bitsea, redcap_event_name == timepoint)
+  }
+  
   bitsea$autism_competence  = rowSums(bitsea[,c("bitsea_1", "bitsea_10", "bitsea_13", "bitsea_15",
                                                 "bitsea_22", "bitsea_25", "bitsea_29", "bitsea_031")], na.rm=T)
   bitsea$autism_problems = rowSums(bitsea[,c("bitsea_9", "bitsea_14", "bitsea_21", "bitsea_35",
@@ -280,7 +368,7 @@ get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
                                       "bitsea_041", "bitsea_042")], na.rm=T)
   bitsea$competence = rowSums(bitsea[,c("bitsea_1", "bitsea_5", "bitsea_10", "bitsea_13", "bitsea_15",
                                         "bitsea_19", "bitsea_20", "bitsea_22", "bitsea_25", "bitsea_29", "bitsea_031")], na.rm=T)
-  bitsea = bitsea[,c("record_id", "brief_infanttoddler_social_and_emotional_assessmen_timestamp","autism_competence", "autism_problems", "autism_total", "competence", "problems")]
+  
   bitsea$problem_thres = 0
   bitsea[bitsea$problems > 11,"problem_thres"] = 1
   bitsea$competence_thres = 0
@@ -291,6 +379,18 @@ get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
   bitsea[bitsea$competence < 12,"autism_comp_thresh"] = 1
   bitsea$autism_prob_thresh = 0
   bitsea[bitsea$autism_problems > 4,"autism_prob_thresh"] = 1
+  
+  bitsea <- rename(bitsea, bitsea_timestamp = brief_infanttoddler_social_and_emotional_assessmen_timestamp)
+  
+  if (!all_items) {
+    bitsea <- bitsea %>%
+      select(record_id, redcap_event_name, bitsea_timestamp, autism_competence, autism_problems, autism_total, competence, problems,
+             autism_comp_thresh, autism_prob_thresh, autism_total_thresh, competence_thres, problem_thres)
+  } else {
+    bitsea <- bitsea %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -brief_infanttoddler_social_and_emotional_assessmen_complete)
+  }
+  
   return (bitsea)
 }
 
@@ -301,13 +401,24 @@ get_bitsea <- function(token, timepoint = "infant_12months2_arm_1") {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_parent_stress <- function(token, timepoint = "infant_9months_arm_1") {
+get_parent_stress <- function(token, timepoint = "infant_9months_arm_1", all_items=F) {
+  library(dplyr)
   parent_stress = get_data(token, form = "parenting_stress_index_fourth_edition_short_form_p")
   parent_stress = parent_stress %>% dplyr::filter(redcap_event_name == timepoint)
   parent_stress$psi = rowMeans(parent_stress[, 7:42], na.rm=T)
-  parent_stress = parent_stress[,c("record_id", "parenting_stress_index_fourth_edition_short_form_p_timestamp","psi")]
+  parent_stress <- rename(parent_stress, psi_timestamp = parenting_stress_index_fourth_edition_short_form_p_timestamp)
+  
+  if (!all_items) {
+    parent_stress <- parent_stress %>%
+      select(record_id, redcap_event_name, psi_timestamp, psi)
+  } else {
+    parent_stress <- parent_stress %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -parenting_stress_index_fourth_edition_short_form_p_complete)
+  }
+
   return (parent_stress)
 }
 
@@ -319,9 +430,11 @@ get_parent_stress <- function(token, timepoint = "infant_9months_arm_1") {
 #' of the MPAS.
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_mpas <- function(token) {
+get_mpas <- function(token, all_items=F) {
+  library(dplyr)
   mpas = get_data(token, "maternal_postnatal_attachment_scale_mpas")
   mpas$mpas_7 = 5 - mpas$mpas_7
   mpas$mpas_10 = 5 - mpas$mpas_10
@@ -329,7 +442,18 @@ get_mpas <- function(token) {
   mpas$pleasure = rowMeans(mpas[,c("mpas_9","mpas_10", "mpas_11", "mpas_13")], na.rm=T)
   mpas$quality = rowMeans(mpas[,c("mpas_3", "mpas_4","mpas_5", "mpas_6", "mpas_7",
                                   "mpas_10", "mpas_14","mpas_18", "mpas_19")], na.rm=T)
-  mpas = mpas[,c("record_id", "maternal_postnatal_attachment_scale_mpas_timestamp","pleasure", "quality")]
+  
+  
+  mpas <- mpas %>% rename(mpas_timestamp = maternal_postnatal_attachment_scale_mpas_timestamp)
+  
+  if (!all_items) {
+    mpas <- mpas %>%
+      select(record_id, redcap_event_name, mpas_timestamp, pleasure, quality)
+  } else {
+    mpas <- mpas %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -maternal_postnatal_attachment_scale_mpas_complete)
+  }
+  
   return (mpas)
 
 }
@@ -342,15 +466,25 @@ get_mpas <- function(token) {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_parent_strain <- function(token, timepoint = "infant_6months_arm_1") {
+get_parent_strain <- function(token, timepoint = "infant_6months_arm_1", all_items=F) {
+  library(dplyr)
   parent_strain = get_data(token, "parenting_stress_role_strain_covid", form_complete = T)
   parent_strain =  dplyr::filter(parent_strain, redcap_event_name == timepoint)
-  cols = c(1,6,8,10,12,14,16,18,20,22)
+  cols = c(1,2,6,8,10,12,14,16,18,20,22)
   parent_strain = parent_strain[,cols]
-  parent_strain$strain = rowMeans(parent_strain[,3:10], na.rm=T)
-  parent_strain = parent_strain[,c("record_id", "parenting_stress_role_strain_covid_timestamp","strain")]
+  parent_strain$strain = rowMeans(parent_strain[,4:11], na.rm=T)
+  
+  parent_strain <- parent_strain %>% rename(parent_strain_timestamp = parenting_stress_role_strain_covid_timestamp)
+  
+  if (!all_items) {
+    parent_strain <- parent_strain %>%
+      select(record_id, redcap_event_name, parent_strain_timestamp, strain)
+  } 
+  
+  return(parent_strain)
 }
 
 #' Process IBQ data
@@ -362,9 +496,11 @@ get_parent_strain <- function(token, timepoint = "infant_6months_arm_1") {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint Survey timepoint branch requested
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_ibq <- function(token, timepoint = "infant_6months_arm_1") {
+get_ibq <- function(token, timepoint = "infant_6months_arm_1", all_items=F) {
+  library(dplyr)
   ibq = get_data(token, "infant_behavior_questionnaire_very_short_form")
   ibq = dplyr::filter(ibq, redcap_event_name == timepoint)
   ibq$ibqr_11_r = 8 - ibq$ibqr_11
@@ -374,7 +510,18 @@ get_ibq <- function(token, timepoint = "infant_6months_arm_1") {
                                  "ibqr_22","ibqr_23","ibqr_28","ibqr_29","ibqr_32","ibqr_33")], na.rm=T)
   ibq$ibq_sur = rowMeans(ibq[, c("ibqr_01","ibqr_02","ibqr_07","ibqr_08","ibqr_13","ibqr_14",
                                  "ibqr_15","ibqr_20","ibqr_21","ibqr_26","ibqr_27","ibqr_36", "ibqr_37")], na.rm=T)
-  ibq = ibq[,c("record_id", "infant_behavior_questionnaire_very_short_form_timestamp","ibq_sur", "ibq_neg", "ibq_ec")]
+  
+  ibq <- ibq %>% rename(ibq_timestamp = infant_behavior_questionnaire_very_short_form_timestamp)
+  
+  if (!all_items) {
+    ibq <- ibq %>%
+      select(record_id, redcap_event_name, ibq_timestamp, ibq_sur, ibq_neg, ibq_ec)
+  } else {
+    ibq <- ibq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -infant_behavior_questionnaire_very_short_form_complete)
+  }
+  
+  return(ibq)
 }
 
 #' Process Baseline data
@@ -392,23 +539,6 @@ get_baseline <- function (token) {
 }
 
 
-#' Process Infant Care data
-#'
-#' This function will download and return the
-#' Infant Care Questionnaire dataset
-#'
-#' @param token Unique REDCap token ID
-#' @param timepoint Survey timepoint branch requested
-#' @return A data frame for the completed surveys
-#' @export
-get_infant_care <- function(token, timepoint = "infant_6months_arm_1") {
-  infant_care = get_data(token, "infant_care_questionnaire")
-  infant_care =  dplyr::filter(infant_care, redcap_event_name == timepoint)
-#  infant_care$parenting_attention = rowMeans(infant_care[, c("icq_3", "icq_6","icq_8","icq_9","icq_11","icq_13")], na.rm=T)
-#  infant_care$infant_reward_response = rowMeans(infant_care[, c("icq_16","icq_19","icq_20")], na.rm=T)
-#  infant_care = infant_care[,c("record_id", "parenting_attention", "infant_reward_response")]
-  return (infant_care)
-}
 
 #' Process Baseline BSI data
 #'
@@ -872,9 +1002,11 @@ get_expected_invites <- function(token, timepoint = timepoint, max_date = 'none'
 #' Early Childhood Behavior Questionnaire dataset for 30 months
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_ecbq <- function(token) {
+get_ecbq <- function(token, all_items=F) {
+  library(dplyr)
   ecbq <- get_data(token, form='early_childhood_behavior_questionnaire_ecbq')
   #reverse scoring items
   ecbq$ecbq_escape_hugs <- 8 - ecbq$ecbq_escape_hugs #item 12
@@ -897,9 +1029,14 @@ get_ecbq <- function(token) {
   ecbq$ecbq_sur <- rowMeans(ecbq[, sur], na.rm = T)
   ecbq$ecbq_ec <- rowMeans(ecbq[, ec], na.rm = T)
   
-  #making final dataset
-  ecbq <- dplyr::select(ecbq, record_id, early_childhood_behavior_questionnaire_ecbq_timestamp,
-                        ecbq_neg, ecbq_sur, ecbq_ec)
+  ecbq <- ecbq %>% rename(ecbq_timestamp = early_childhood_behavior_questionnaire_ecbq_timestamp)
+  if (!all_items) {
+    ecbq <- ecbq %>%
+      select(record_id, redcap_event_name, ecbq_timestamp, ecbq_neg, ecbq_sur, ecbq_ec)
+  } else {
+    ecbq <- ecbq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -early_childhood_behavior_questionnaire_ecbq_complete)
+  }
   
   return(ecbq)
 }
@@ -910,9 +1047,11 @@ get_ecbq <- function(token) {
 #' Childhood Behavior Questionnaire dataset for 42 months
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_cbq <- function(token) {
+get_cbq <- function(token, all_items=F) {
+  library(dplyr)
   cbq <- get_data(token, form='child_behavior_questionnaire_very_short_form_cbqvs')
   
   #reverse scoring
@@ -929,8 +1068,14 @@ get_cbq <- function(token) {
   cbq$cbq_ec <- rowMeans(cbq[, ec], na.rm = T)
   
   #making final dataset
-  cbq <- dplyr::select(cbq, record_id, child_behavior_questionnaire_very_short_form_cbqvs_timestamp,
-                       cbq_neg, cbq_sur, cbq_ec)
+  cbq <- cbq %>% rename(cbq_timestamp = child_behavior_questionnaire_very_short_form_cbqvs_timestamp)
+  if (!all_items) {
+    cbq <- cbq %>%
+      select(record_id, redcap_event_name, cbq_timestamp, cbq_neg, cbq_sur, cbq_ec)
+  } else {
+    cbq <- cbq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -child_behavior_questionnaire_very_short_form_cbqvs_complete)
+  }
   
   return(cbq)
   
@@ -943,9 +1088,10 @@ get_cbq <- function(token) {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_social_support <- function(token, timepoint = 'infant_6months_arm_1') {
+get_social_support <- function(token, timepoint = 'infant_6months_arm_1', all_items=F) {
   library(dplyr)
   ss = get_data(token, 'social_support')
   
@@ -963,11 +1109,17 @@ get_social_support <- function(token, timepoint = 'infant_6months_arm_1') {
   ss$support2 <- as.numeric(ss$support2)
   
   ss <- ss %>%
-    select(record_id, social_support_timestamp, support1, support2, ss_score_sum, ss_score_mean) %>%
     rename(ss_relatives_num = support1, ss_friends_num = support2,
            ss_timestamp = social_support_timestamp)
   
-  
+  if (!all_items) {
+    ss <- ss %>%
+      select(record_id, redcap_event_name, ss_timestamp, ss_relatives_num, ss_friends_num, ss_score_sum, ss_score_mean)
+  } else {
+    ss <- ss %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -social_support_complete)
+  }
+
   return(ss)
   
 }
@@ -979,9 +1131,10 @@ get_social_support <- function(token, timepoint = 'infant_6months_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_pisq <- function(token, timepoint = 'infant_6months_arm_1') {
+get_pisq <- function(token, timepoint = 'infant_6months_arm_1', all_items=F) {
   library(dplyr)
   library(hms)
   sleep = get_data(token, "pit_sleep_quality_index")
@@ -1040,8 +1193,15 @@ get_pisq <- function(token, timepoint = 'infant_6months_arm_1') {
   
   
   sleep <- sleep %>%
-    rename(pisq_timestamp = pit_sleep_quality_index_timestamp) %>%
-    select(record_id, pisq_timestamp, sleep_q2_scored:pisq_score)
+    rename(pisq_timestamp = pit_sleep_quality_index_timestamp)
+  
+  if (!all_items) {
+    sleep <- sleep %>%
+      select(record_id, redcap_event_name, pisq_timestamp, sleep_q2_scored:pisq_score)
+  } else {
+    sleep <- sleep %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -pit_sleep_quality_index_complete)
+  }
   
   return(sleep)
   
@@ -1055,9 +1215,10 @@ get_pisq <- function(token, timepoint = 'infant_6months_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_prqc <- function(token, timepoint='infant_6months_arm_1') {
+get_prqc <- function(token, timepoint='infant_6months_arm_1', all_items=F) {
   library(dplyr)
   prqc <- get_data(token, form='relationship_quality_prqcsf_covid')
   prqc <- filter(prqc, redcap_event_name == timepoint)
@@ -1072,8 +1233,16 @@ get_prqc <- function(token, timepoint='infant_6months_arm_1') {
            prqc_special_effort_precov = prqc_q13, prqc_special_effort_now = prqc_q14)
   
   prqc <- prqc %>%
-    rename(prqc_timestamp = relationship_quality_prqcsf_covid_timestamp) %>%
-    select(record_id, prqc_timestamp, prqc_satisfaction_precov:prqc_special_effort_now)
+    rename(prqc_timestamp = relationship_quality_prqcsf_covid_timestamp) 
+  
+  if (!all_items) {
+    prqc <- prqc %>%
+      select(record_id, redcap_event_name, prqc_timestamp, prqc_satisfaction_precov:prqc_special_effort_now)
+  } else {
+    prqc <- prqc %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -relationship_quality_prqcsf_covid_complete)
+  }
+
   
   return(prqc)
 }
@@ -1085,9 +1254,10 @@ get_prqc <- function(token, timepoint='infant_6months_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_6months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
+get_infant_care <- function(token, timepoint='infant_6months_arm_1', all_items=F) {
   library(dplyr)
   icq <- get_data(token, form='infant_care_questionnaire')
   icq <- filter(icq, redcap_event_name == timepoint)
@@ -1110,8 +1280,15 @@ get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
   icq$icq_responsiveness = rowMeans(icq[, d3_cols], na.rm=T)
   
   icq <- icq %>%
-    rename(icq_timestamp = infant_care_questionnaire_timestamp) %>%
-    select(record_id, icq_timestamp, icq_mom_baby, icq_emotionality, icq_responsiveness)
+    rename(icq_timestamp = infant_care_questionnaire_timestamp) 
+  
+  if (!all_items) {
+    icq <- icq %>%
+      select(record_id, redcap_event_name, icq_timestamp, icq_mom_baby, icq_emotionality, icq_responsiveness)
+  } else {
+    icq <- icq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -infant_care_questionnaire_complete)
+  }
   
   return(icq)
 }
@@ -1123,9 +1300,10 @@ get_infant_care <- function(token, timepoint='infant_6months_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_12months2_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_cesd <- function(token, timepoint = 'infant_12months2_arm_1') {
+get_cesd <- function(token, timepoint = 'infant_12months2_arm_1', all_items=F) {
   library(dplyr)
   cesd <- get_data(token, form='center_for_epidemiologic_studies_depression_scale')
   cesd <- filter(cesd, redcap_event_name == timepoint)
@@ -1139,8 +1317,16 @@ get_cesd <- function(token, timepoint = 'infant_12months2_arm_1') {
   cesd$cesd_score <- rowSums(cesd[, 7:26], na.rm=T)
   
   cesd <- cesd %>%
-    rename(cesd_timestamp = center_for_epidemiologic_studies_depression_scale_timestamp) %>%
-    select(record_id, cesd_timestamp, cesd_score)
+    rename(cesd_timestamp = center_for_epidemiologic_studies_depression_scale_timestamp)
+  
+  if (!all_items) {
+    cesd <- cesd %>%
+      select(record_id, redcap_event_name, cesd_timestamp, cesd_score)
+  } else {
+    cesd <- cesd %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -center_for_epidemiologic_studies_depression_scale_complete)
+  }
+  
   
   return(cesd)
   
@@ -1153,9 +1339,10 @@ get_cesd <- function(token, timepoint = 'infant_12months2_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_9months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_phq <- function(token, timepoint='infant_9months_arm_1') {
+get_phq <- function(token, timepoint='infant_9months_arm_1', all_items=F) {
   library(dplyr)
   phq <- get_data(token, form='patient_health_questionnaire_9')
   phq <- filter(phq, redcap_event_name == timepoint)
@@ -1170,8 +1357,16 @@ get_phq <- function(token, timepoint='infant_9months_arm_1') {
     ))
   
   phq <- phq %>%
-    rename(phq_difficulty = phq9_how_difficult, phq_timestamp = patient_health_questionnaire_9_timestamp) %>%
-    select(record_id, phq_timestamp, phq_score, phq_difficulty, phq_severity)
+    rename(phq_difficulty = phq9_how_difficult, phq_timestamp = patient_health_questionnaire_9_timestamp) 
+  
+  if (!all_items) {
+    phq <- phq %>%
+      select(record_id, redcap_event_name, phq_timestamp, phq_score, phq_difficulty, phq_severity)
+  } else {
+    phq <- phq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -patient_health_questionnaire_9_complete)
+  }
+
   
   return(phq)
   
@@ -1183,9 +1378,10 @@ get_phq <- function(token, timepoint='infant_9months_arm_1') {
 #' EEFQ scale
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_eefq <- function(token) {
+get_eefq <- function(token, all_items=F) {
   library(dplyr)
   eefq <- get_data(token, form='early_executive_function_q_survey')
   
@@ -1206,8 +1402,15 @@ get_eefq <- function(token) {
   
   eefq <- eefq %>%
     rename(eefq_timestamp = early_executive_function_q_survey_timestamp,
-           eefq_ic_waiting_game = eefq_waiting_game, eefq_wm_finding_game = eefq_finding_game, eefq_fx_sorting_game = eefq_sorting_game) %>%
-    select(record_id, eefq_timestamp, eefq_ic, eefq_fx, eefq_wm, eefq_rg, eefq_ic_waiting_game, eefq_fx_sorting_game, eefq_wm_finding_game)
+           eefq_ic_waiting_game = eefq_waiting_game, eefq_wm_finding_game = eefq_finding_game, eefq_fx_sorting_game = eefq_sorting_game) 
+  
+  if (!all_items) {
+    eefq <- eefq %>%
+      select(record_id, redcap_event_name, eefq_timestamp,  eefq_ic, eefq_fx, eefq_wm, eefq_rg, eefq_ic_waiting_game, eefq_fx_sorting_game, eefq_wm_finding_game)
+  } else {
+    eefq <- eefq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -early_executive_function_q_survey_complete)
+  }
   
   return(eefq)
 }
@@ -1219,9 +1422,10 @@ get_eefq <- function(token) {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_30months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_ders <- function(token, timepoint='infant_30months_arm_1') {
+get_ders <- function(token, timepoint='infant_30months_arm_1', all_items=F) {
   library(dplyr)
   ders <- get_data(token, form='difficulties_in_emotional_regulation_ders16item')
   ders <- filter(ders, redcap_event_name == timepoint)
@@ -1233,9 +1437,16 @@ get_ders <- function(token, timepoint='infant_30months_arm_1') {
   ders$ders_clarity <- rowSums(ders[, c('ders_1', 'ders_2')], na.rm=T)
   
   ders <- ders %>%
-    rename(ders_timestamp = difficulties_in_emotional_regulation_ders16item_timestamp) %>%
-    select(record_id, ders_timestamp, ders_non_accept, ders_goals, ders_impulse, ders_strategies, ders_clarity)
+    rename(ders_timestamp = difficulties_in_emotional_regulation_ders16item_timestamp)
   
+  if (!all_items) {
+    ders <- ders %>%
+      select(record_id, redcap_event_name, ders_timestamp,ders_non_accept, ders_goals, ders_impulse, ders_strategies, ders_clarity)
+  } else {
+    ders <- ders %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -difficulties_in_emotional_regulation_ders16item_complete)
+  }
+
   return(ders)
   
 }
@@ -1247,9 +1458,10 @@ get_ders <- function(token, timepoint='infant_30months_arm_1') {
 #'
 #' @param token Unique REDCap token ID
 #' @param timepoint redcap event name (default is 'infant_30months_arm_1')
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_ious27 <- function(token, timepoint='infant_30months_arm_1') {
+get_ious27 <- function(token, timepoint='infant_30months_arm_1', all_items=F) {
   library(dplyr)
   
   ious <- get_data(token, form='intolerance_of_uncertainty_scale_ius27item')
@@ -1258,9 +1470,16 @@ get_ious27 <- function(token, timepoint='infant_30months_arm_1') {
   ious$ious27_score <- rowSums(ious[, 7:33], na.rm=T)
   
   ious <- ious %>%
-    rename(ious27_timestamp = intolerance_of_uncertainty_scale_ius27item_timestamp) %>%
-    select(record_id, ious27_timestamp, ious27_score)
+    rename(ious27_timestamp = intolerance_of_uncertainty_scale_ius27item_timestamp) 
   
+  if (!all_items) {
+    ious <- ious %>%
+      select(record_id, redcap_event_name, ious27_timestamp, ious27_score)
+  } else {
+    ious <- ious %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -intolerance_of_uncertainty_scale_ius27item_complete)
+  }
+ 
   return(ious)
   
 }
@@ -1271,15 +1490,24 @@ get_ious27 <- function(token, timepoint='infant_30months_arm_1') {
 #' Beck Depression Inventory 
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_beck <- function(token) {
+get_beck <- function(token, all_items=F) {
   library(dplyr)
   beck <- get_data(token, form='becks_depression_inventory')
   
   beck <- beck %>%
-    rename(beck_timestamp = becks_depression_inventory_timestamp) %>%
-    select(record_id, beck_timestamp, beck_score, beck_severity)
+    rename(beck_timestamp = becks_depression_inventory_timestamp)
+  
+  if (!all_items) {
+    beck <- beck %>%
+      select(record_id, redcap_event_name, beck_timestamp, beck_score, beck_severity)
+  } else {
+    beck <- beck %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -becks_depression_inventory_complete)
+  }
+
   
   return(beck)
 }
@@ -1290,9 +1518,10 @@ get_beck <- function(token) {
 #' STAI
 #'
 #' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
 #' @return A data frame for the completed surveys
 #' @export
-get_stai <- function(token) {
+get_stai <- function(token, all_items=F) {
   library(dplyr)
   stai <- get_data(token, form='state_trait_anxiety_inventory')
   
@@ -1314,9 +1543,176 @@ get_stai <- function(token) {
   stai$stai_t = rowSums(stai[stait], na.rm=T)
   
   stai <- stai %>%
-    rename(stai_timestamp = state_trait_anxiety_inventory_timestamp) %>%
-    select(record_id, stai_timestamp, stai_s, stai_t)
+    rename(stai_timestamp = state_trait_anxiety_inventory_timestamp)
+  
+  if (!all_items) {
+    stai <- stai %>%
+      select(record_id, redcap_event_name, stai_timestamp, stai_s, stai_t)
+  } else {
+    stai <- stai %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -state_trait_anxiety_inventory_complete)
+  }
   
   return(stai)
   
+}
+
+#' Process Questionnaire of Unpredictability
+#'
+#' This function will download and compute total scores for the
+#' QUIC
+#'
+#' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
+#' @return A data frame for the completed surveys
+#' @export
+get_quic <- function(token, all_items = F) {
+  quic <- get_data(token, form='questionnaire_of_unpredictability_in_childhood')
+  
+  reversed <- c('quic_q01', 'quic_q03', 'quic_q04', 'quic_q05', 'quic_q06', 'quic_q07','quic_q08', 'quic_q09', 'quic_q10', 'quic_q14',
+                'quic_q15','quic_q17', 'quic_q28', 'quic_q36')
+  
+  quic[reversed] <- lapply(quic[reversed], function(x) 1 - x)
+  
+  quic$quic_overall = rowSums(quic[, 7:44], na.rm=T)
+  
+  quic$quic_parent_involvement = rowSums(quic[, c('quic_q01', 'quic_q03', 'quic_q04', 'quic_q05', 'quic_q06', 'quic_q07', 'quic_q09', 
+                                                  'quic_q10', 'quic_q14')], na.rm = T)
+  
+  quic$quic_parent_predictability = rowSums(quic[, c('quic_q02', 'quic_q08', 'quic_q11', 'quic_q12', 'quic_q15', 'quic_q16', 'quic_q17', 'quic_q31',
+                                                     'quic_q32', 'quic_q33', 'quic_q34', 'quic_q35')], na.rm = T)
+  
+  quic$quic_parent_environment = rowSums(quic[, c('quic_q18', 'quic_q19', 'quic_q21', 'quic_q22', 'quic_q28', 'quic_q29','quic_q30')], na.rm = T)
+  
+  quic$quic_physical_environment = rowSums(quic[, c('quic_q13', 'quic_q20', 'quic_q26', 'quic_q27', 'quic_q36', 'quic_q37', 'quic_q38')], na.rm = T)
+  
+  quic$quic_safety_security = rowSums(quic[, c('quic_q23', 'quic_q24', 'quic_q25')], na.rm = T)
+  
+  quic <- quic %>% rename(quic_timestamp = questionnaire_of_unpredictability_in_childhood_timestamp)
+  if (!all_items) {
+    quic <- quic %>%
+      select(record_id, redcap_event_name, quic_timestamp, quic_overall:quic_safety_security)
+  } else {
+    quic <- quic %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -questionnaire_of_unpredictability_in_childhood_complete)
+  }
+  
+  return (quic)
+}
+
+#' Process Social Readjustment Rating Scale
+#'
+#' This function will download and compute total scores for the
+#' SRRS
+#'
+#' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
+#' @return A data frame for the completed surveys
+#' @export
+get_srrs <- function(token, all_items=F) {
+  library(dplyr)
+  srrs <- get_data(token, form='social_readjustment_rating_scale')
+  
+  scoring_data <- data.frame(field_name = c("srrs_q1",  "srrs_q2",  "srrs_q3", "srrs_q4", "srrs_q5",  "srrs_q6",  "srrs_q7",  "srrs_q8",  "srrs_q9", "srrs_q10",
+                                            "srrs_q11", "srrs_q12","srrs_q13", "srrs_q14", "srrs_q15", "srrs_q16", "srrs_q17", "srrs_q18", "srrs_q19", "srrs_q20",
+                                            "srrs_q21", "srrs_q22", "srrs_q23", "srrs_q24", "srrs_q25", "srrs_q26", "srrs_q27", "srrs_q28","srrs_q29", "srrs_q30"),
+                             score = c(42, 44, 21, 89, 78, 52, 59, 62, 67, 50,36, 30, 23, 51, 21, 39,37, 47, 33, 38, 22, 44, 59, 23, 38, 39, 39, 74, 33, 34))
+  
+  #replacings 1/0 with score 
+  for (row in 1:nrow(scoring_data)) {
+    srrs[[scoring_data$field_name[row]]] <- gsub(1, scoring_data$score[row], srrs[[scoring_data$field_name[row]]])
+    
+  }
+  srrs[7:36] <- lapply(srrs[7:36], as.numeric)
+  srrs$srrs_total_score = rowSums(srrs[, 7:36], na.rm=T)
+  
+  srrs <- srrs %>% rename(srrs_timestmap = social_readjustment_rating_scale_timestamp)
+  if (!all_items) {
+    srrs <- srrs %>%
+      select(record_id, redcap_event_name, srrs_timestamp, srrs_total_score)
+  } else {
+    srrs <- srrs %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -social_readjustment_rating_scale_complete)
+  }
+  
+  return(srrs)
+}
+
+#' Process Social Reward Questionnaire
+#'
+#' This function will download and compute total scores for the
+#' SRQ
+#'
+#' @param token Unique REDCap token ID
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
+#' @return A data frame for the completed surveys
+#' @export
+get_srq <- function(token, all_items=F) {
+  library(dplyr)
+  
+  srq <- get_data(token, form='social_reward_questionnaire_srqec')
+  
+  srq$srq_sociability_wanting <- rowSums(srq[, c('srq5', 'srq11', 'srq17', 'srq19', 'srq29')], na.rm=T)
+  srq$srq_sociability_liking <- rowSums(srq[, c('srq6', 'srq12','srq18', 'srq20', 'srq30')], na.rm=T)
+  srq$srq_admiration_wanting <- rowSums(srq[, c('srq1', 'srq3', 'srq13', 'srq21', 'srq25')], na.rm=T)
+  srq$srq_admiration_liking <- rowSums(srq[, c('srq2', 'srq4', 'srq14', 'srq22', 'srq26')], na.rm=T)
+  srq$srq_prosocial_wanting <- rowSums(srq[, c('srq7', 'srq9', 'srq15', 'srq23', 'srq27')], na.rm=T)
+  srq$srq_prosocial_liking <- rowSums(srq[, c('srq8', 'srq10', 'srq16', 'srq24', 'srq28')], na.rm=T)
+  
+  srq <- srq %>% rename(srq_timesamp = social_reward_questionnaire_srqec_timestamp)
+  if (!all_items) {
+    srq <- srq %>%
+      select(record_id, srq_timestamp, srq_sociability_wanting:srq_prosocial_liking)
+    
+  } else {
+    srq <- srq %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -social_reward_questionnaire_srqec_complete)
+  }
+  
+  return(srq)
+}
+
+#' Process Resilience Data
+#'
+#' This function will download and compute total scores for the
+#' resilience survey
+#'
+#' @param token Unique REDCap token ID
+#' @param timepoint redcap event name for timepoint you want to pull
+#' @param all_items Boolean - whether to pull raw item scores as well as the subscales
+#' @return A data frame for the completed surveys
+#' @export
+get_resilience <- function(token, timepoint = 'infant_9months_arm_1', all_items=F) {
+  library(dplyr)
+  res <- get_data(token, form='resilience24')
+  res <- filter(res, redcap_event_name == timepoint)
+  
+  cd_risc10 <- c('resilience_q01', 'resilience_q02', 'resilience_q03', 'resilience_q04', 'resilience_q05', 'resilience_q06',
+                 'resilience_q07', 'resilience_q08', 'resilience_q09', 'resilience_q10')
+  
+  reversed <- c('resilience_q12', 'resilience_q14', 'resilience_q16', 'resilience_q18', 'resilience_q20', 'resilience_q21',
+                'resilience_q24', 'resilience_q28', 'resilience_q29') 
+  
+  res[reversed] <- lapply(res[reversed], function(x) 4 - x)
+  
+  res$res_structured_style <- rowMeans(res[, c('resilience_q11', 'resilience_q12', 'resilience_q13', 'resilience_q14')], na.rm=T)
+  res$res_social_competence <- rowMeans(res[, c('resilience_q15', 'resilience_q16', 'resilience_q17', 'resilience_q18',
+                                                'resilience_q19', 'resilience_q20')], na.rm=T)
+  res$res_planned_future <- rowMeans(res[, c('resilience_q21', 'resilience_q22', 'resilience_q23', 'resilience_q24', 'resilience_q27')], na.rm=T)
+  res$res_perception_self <- rowMeans(res[, c('resilience_q25', 'resilience_q26', 'resilience_q28', 'resilience_q29', 'resilience_q30')], na.rm=T)
+  
+  
+  #CD RISC SCORES
+  res$res_cd_risc10 <- rowMeans(res[, cd_risc10], na.rm=T)
+  
+  res <- res %>% rename(resilience_timestamp = resilience24_timestamp)
+  if (!all_items) {
+    res <- res %>%
+      select(record_id, resilience_timestamp, res_cd_risc10, res_structured_style:res_perception_self)
+  } else {
+    res <- res %>%
+      select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -resilience24_complete)
+  }
+  
+  return(res)
 }
