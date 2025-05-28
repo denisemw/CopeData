@@ -1662,7 +1662,7 @@ get_srq <- function(token, all_items=F) {
   srq <- srq %>% rename(srq_timesamp = social_reward_questionnaire_srqec_timestamp)
   if (!all_items) {
     srq <- srq %>%
-      select(record_id, srq_timestamp, srq_sociability_wanting:srq_prosocial_liking)
+      select(record_id, redcap_event_name, srq_timestamp, srq_sociability_wanting:srq_prosocial_liking)
     
   } else {
     srq <- srq %>%
@@ -1708,7 +1708,7 @@ get_resilience <- function(token, timepoint = 'infant_9months_arm_1', all_items=
   res <- res %>% rename(resilience_timestamp = resilience24_timestamp)
   if (!all_items) {
     res <- res %>%
-      select(record_id, resilience_timestamp, res_cd_risc10, res_structured_style:res_perception_self)
+      select(record_id, redcap_event_name, resilience_timestamp, res_cd_risc10, res_structured_style:res_perception_self)
   } else {
     res <- res %>%
       select(-redcap_repeat_instrument,-redcap_repeat_instance, -redcap_survey_identifier, -resilience24_complete)
