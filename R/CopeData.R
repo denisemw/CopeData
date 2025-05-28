@@ -1626,7 +1626,7 @@ get_srrs <- function(token, all_items=F) {
   srrs[7:36] <- lapply(srrs[7:36], as.numeric)
   srrs$srrs_total_score = rowSums(srrs[, 7:36], na.rm=T)
   
-  srrs <- srrs %>% rename(srrs_timestmap = social_readjustment_rating_scale_timestamp)
+  srrs <- srrs %>% rename(srrs_timestamp = social_readjustment_rating_scale_timestamp)
   if (!all_items) {
     srrs <- srrs %>%
       select(record_id, redcap_event_name, srrs_timestamp, srrs_total_score)
