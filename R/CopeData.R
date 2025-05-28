@@ -1659,7 +1659,7 @@ get_srq <- function(token, all_items=F) {
   srq$srq_prosocial_wanting <- rowSums(srq[, c('srq7', 'srq9', 'srq15', 'srq23', 'srq27')], na.rm=T)
   srq$srq_prosocial_liking <- rowSums(srq[, c('srq8', 'srq10', 'srq16', 'srq24', 'srq28')], na.rm=T)
   
-  srq <- srq %>% rename(srq_timesamp = social_reward_questionnaire_srqec_timestamp)
+  srq <- srq %>% rename(srq_timestamp = social_reward_questionnaire_srqec_timestamp)
   if (!all_items) {
     srq <- srq %>%
       select(record_id, redcap_event_name, srq_timestamp, srq_sociability_wanting:srq_prosocial_liking)
